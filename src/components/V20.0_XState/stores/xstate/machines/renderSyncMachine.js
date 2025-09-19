@@ -1,4 +1,4 @@
-import { createMachine, assign, spawn } from 'xstate';
+import { createMachine, assign, spawn, interpret } from 'xstate';
 
 /**
  * 🔄 RENDER SYNC MACHINE - Synchronisation bloom/PBR/lighting/background
@@ -508,8 +508,6 @@ export class RenderSyncService {
 
   start() {
     if (this.service) return;
-
-    const { interpret } = require('xstate');
     this.service = interpret(this.machine)
       .onTransition((state) => {
         console.log(`[RenderSync] State: ${state.value}`);
