@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { renderSyncService } from '../stores/xstate/machines/renderSyncMachine';
-import { useArtSystemStore } from '../stores/artSystemStore';
+import useSceneStore from '../stores/sceneStore';
 
 /**
  * 🔄 Hook pour utiliser RenderSync dans les composants React
@@ -21,10 +21,10 @@ export function useRenderSync() {
     lighting,
     background,
     setBloomGlobalBatch,
-    setPbrMultipliers,
+    setPbrMultiplier,
     setExposure,
     setBackgroundColor
-  } = useArtSystemStore();
+  } = useSceneStore();
 
   // Initialisation et cleanup
   useEffect(() => {
@@ -70,10 +70,9 @@ export function useRenderSync() {
       }
 
       if (systems.pbr) {
-        setPbrMultipliers({
-          ambientMultiplier: systems.pbr.ambientMultiplier,
-          directionalMultiplier: systems.pbr.directionalMultiplier
-        });
+        // Appliquer les multipliers séparément
+        setPbrMultiplier('ambient', systems.pbr.ambientMultiplier);
+        setPbrMultiplier('directional', systems.pbr.directionalMultiplier);
       }
 
       if (systems.lighting) {
