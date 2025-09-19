@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Development and backup folders
+/src/components/BACKUP_Version/
+/src/components/V19.8_refacto/
+/src/components/V20.0_XState/archive_Xstate_v1_HS/
+/src/components/V20.0_XState/Claude_guide/
+/src/components/V20.0_XState copy/
+
+# Debug and test scripts
+analyze-glb.js
+debug-animations.js
+debug-pbr-sync.js
+test-pbr-console.js
+test-pbr.js
+
+# Analysis reports
+RAPPORT_ANALYSE_GLB.md
+
+# 3D Models (except the main one)
+/public/models/One-arme-*.glb
+/public/models/V3_Eye-2.0.glb
+/public/models/Voo*.glb
+# Keep only V3_Eye-3.0.glb
+
+# Temporary files
+*.tmp
+*.temp
+*~

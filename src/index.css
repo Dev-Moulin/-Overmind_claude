@@ -1,0 +1,22 @@
+/* Global V5 - Three.js optimized */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* background: #1a1a1a; ← COMMENTÉ pour permettre theme dynamique */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Optimisations performances Three.js */
+canvas {
+  display: block;
+  outline: none;
+}
+
+/* Suppression des styles React par défaut */
