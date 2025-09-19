@@ -5,6 +5,8 @@ import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useSceneMachine } from './stores/xstate/hooks/useSceneMachine.js';
 import XStateDebugPanel from './components/XStateDebugPanel.jsx';
+import { RenderSyncToast } from './components/RenderSyncToast.jsx';
+
 
 // Mock 3D Scene Component pour tester
 const MockScene = () => {
@@ -99,6 +101,9 @@ const V20Scene = () => {
 
       {/* Debug Panel */}
       <XStateDebugPanel />
+
+      {/* RenderSync Toast Notifications */}
+      <RenderSyncToast />
     </div>
   );
 };
