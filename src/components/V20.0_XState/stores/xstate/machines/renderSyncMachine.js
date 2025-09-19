@@ -555,8 +555,8 @@ export class RenderSyncService {
 
   setupStoreListeners() {
     // S'abonner aux changements du store Zustand
-    if (window.useArtSystemStore) {
-      const unsubscribe = window.useArtSystemStore.subscribe(
+    if (window.useSceneStore) {
+      const unsubscribe = window.useSceneStore.subscribe(
         (state) => {
           // Synchroniser les changements vers la machine XState
           this.send({
