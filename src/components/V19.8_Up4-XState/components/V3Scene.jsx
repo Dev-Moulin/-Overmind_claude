@@ -33,6 +33,9 @@ import DualPanelTest from './DualPanelTest.jsx';
 // 🚀 TEMPORARY: Phase 1 sync hook
 import { useTempBloomSync } from '../hooks/useTempBloomSync.js';
 
+// ✨ NOUVEAU: VisualEffectsMachine XState (Atome B2)
+import { useVisualEffects } from '../machines/visualEffects/useVisualEffects.js';
+
 // Configuration
 import { V3_CONFIG } from '../utils/config.js';
 
@@ -128,6 +131,24 @@ export default function V3Scene() {
   // 🚀 TEMPORARY: Phase 1 Zustand sync test
   useTempBloomSync(systemsInitialized);
 
+  // ✨ NOUVEAU: VisualEffectsMachine (Atome B2) - Feature flag pour migration progressive
+  const [useXStateVisualEffects, setUseXStateVisualEffects] = useState(false); // 🚩 Feature flag contrôlable
+
+  const visualEffects = useVisualEffects({
+    renderer: useXStateVisualEffects ? renderer : null,
+    scene: useXStateVisualEffects ? scene : null,
+    camera: useXStateVisualEffects ? camera : null,
+    autoInit: useXStateVisualEffects && systemsInitialized,
+    enablePerformanceMonitoring: false, // Éviter spam console
+    debugMode: false,
+    onStateChange: useXStateVisualEffects ? (state) => {
+      console.log('🎨 V3Scene: VisualEffects state change:', state.value);
+    } : undefined,
+    onError: useXStateVisualEffects ? (error) => {
+      console.error('❌ V3Scene: VisualEffects error:', error);
+    } : undefined
+  });
+
   // ✅ FONCTION STABLE POUR CHARGEMENT
   const handleLoadModel = useCallback((scene) => {
     if (loadingRef.current) return;
@@ -203,6 +224,19 @@ export default function V3Scene() {
     if (!scene || !isInitialized) return;
     handleLoadModel(scene);
   }, [scene, isInitialized, handleLoadModel]);
+
+  // ✨ NOUVEAU: Auto-détection objets pour VisualEffectsMachine (architecture noble)
+  useEffect(() => {
+    if (useXStateVisualEffects && modelLoaded && modelDataRef.current?.model) {
+      console.log('🔍 V3Scene: Auto-detection objets pour VisualEffectsMachine...');
+      try {
+        visualEffects.objects.detect(modelDataRef.current.model);
+        console.log('✅ V3Scene: Objets détectés et enregistrés dans VisualEffectsMachine');
+      } catch (error) {
+        console.error('❌ V3Scene: Erreur détection objets:', error);
+      }
+    }
+  }, [useXStateVisualEffects, modelLoaded]);
 
   // ✅ FONCTION STABLE POUR AJUSTEMENT CAMÉRA
   const handleCameraFit = useCallback(() => {
@@ -722,7 +756,52 @@ export default function V3Scene() {
           currentAnimation={currentAnimation}
         />
       )}
-      
+
+      {/* ✨ NOUVEAU: Bouton d'activation VisualEffectsMachine */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 1000
+      }}>
+        <button
+          onClick={() => {
+            setUseXStateVisualEffects(!useXStateVisualEffects);
+            console.log(`🚩 V3Scene: VisualEffectsMachine ${!useXStateVisualEffects ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+          }}
+          style={{
+            padding: '12px 20px',
+            background: useXStateVisualEffects ? '#4CAF50' : '#ff9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+          }}
+        >
+          {useXStateVisualEffects ? '✅ XState ON' : '🔄 XState OFF'}
+        </button>
+
+        {/* Indicateur état si activé */}
+        {useXStateVisualEffects && visualEffects && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px',
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            borderRadius: '4px',
+            fontSize: '12px',
+            maxWidth: '200px'
+          }}>
+            <div>🌟 Bloom: {visualEffects.bloom.isEnabled ? '✅' : '❌'}</div>
+            <div>🎨 PBR: {visualEffects.pbr.isActive ? '✅' : '❌'}</div>
+            <div>🎭 Objects: {visualEffects.objects.counts.iris + visualEffects.objects.counts.eyeRings}</div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
