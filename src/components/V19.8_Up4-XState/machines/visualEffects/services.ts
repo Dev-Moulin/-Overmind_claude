@@ -11,8 +11,38 @@ import type { VisualEffectsContext } from './types';
 export const enableGlobalBloom = async (context: VisualEffectsContext) => {
   console.log('🌟 Enabling global bloom...');
 
+  // 🧪 TEST VISUEL : Changer couleur émissive des objets détectés
+  const testVisualFeedback = () => {
+    console.log('🎨 Applying visual test: changing emissive color of detected objects');
+
+    // Parcourir tous les objets détectés
+    Object.entries(context.objectsRegistry).forEach(([groupName, objectsMap]) => {
+      if (objectsMap.size > 0) {
+        console.log(`🔍 Testing group ${groupName}: ${objectsMap.size} objects`);
+
+        objectsMap.forEach((mesh, id) => {
+          if (mesh && mesh.material) {
+            // Sauvegarder couleur originale si pas déjà fait
+            if (!mesh.userData.originalEmissive) {
+              mesh.userData.originalEmissive = mesh.material.emissive ? mesh.material.emissive.clone() : new THREE.Color(0x000000);
+            }
+
+            // Appliquer couleur test (vert émissif)
+            if (mesh.material.emissive) {
+              mesh.material.emissive.setHex(0x00ff00);
+              mesh.material.needsUpdate = true;
+              console.log(`✅ Object ${id} (${groupName}): emissive set to green`);
+            }
+          }
+        });
+      }
+    });
+  };
+
+  // Appliquer test visuel
+  testVisualFeedback();
+
   // Simuler l'activation du bloom
-  // Dans la vraie implémentation, on appellerait SimpleBloomSystem
   await new Promise(resolve => setTimeout(resolve, 100));
 
   // Si on a accès au système bloom externe
@@ -23,12 +53,37 @@ export const enableGlobalBloom = async (context: VisualEffectsContext) => {
     (window as any).simpleBloomSystem.updateBloom('radius', context.bloom.global.radius);
   }
 
-  console.log('✅ Global bloom enabled');
+  console.log('✅ Global bloom enabled with visual test feedback');
   return { success: true };
 };
 
 export const disableGlobalBloom = async (context: VisualEffectsContext) => {
   console.log('🌟 Disabling global bloom...');
+
+  // 🧪 TEST VISUEL : Restaurer couleurs originales
+  const restoreOriginalColors = () => {
+    console.log('🎨 Restoring original emissive colors');
+
+    Object.entries(context.objectsRegistry).forEach(([groupName, objectsMap]) => {
+      if (objectsMap.size > 0) {
+        console.log(`🔄 Restoring group ${groupName}: ${objectsMap.size} objects`);
+
+        objectsMap.forEach((mesh: any, id: string) => {
+          if (mesh && mesh.material && mesh.userData.originalEmissive) {
+            // Restaurer couleur originale
+            if (mesh.material.emissive) {
+              mesh.material.emissive.copy(mesh.userData.originalEmissive);
+              mesh.material.needsUpdate = true;
+              console.log(`✅ Object ${id} (${groupName}): emissive restored`);
+            }
+          }
+        });
+      }
+    });
+  };
+
+  // Restaurer couleurs
+  restoreOriginalColors();
 
   await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -36,7 +91,7 @@ export const disableGlobalBloom = async (context: VisualEffectsContext) => {
     (window as any).simpleBloomSystem.setBloomEnabled(false);
   }
 
-  console.log('✅ Global bloom disabled');
+  console.log('✅ Global bloom disabled with visual test cleanup');
   return { success: true };
 };
 

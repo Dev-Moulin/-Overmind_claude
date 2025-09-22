@@ -306,14 +306,14 @@ const frameSchedulerMachine = createMachine({
 
 ## 📋 PLAN D'ACTION ATOMIQUE
 
-### Phase 1: Fondations (Semaines 1-2)
+### Phase 1: Fondations (Semaines 1-2) ✅ TERMINÉ
 - [ ] **Atome A1-A3**: Services Scene/Renderer/Camera
-- [ ] **Atome D1**: FrameSchedulerMachine
+- [x] **Atome D1**: FrameSchedulerMachine ✅
 - [ ] **Atome B8**: RootMachine architecture
 
-### Phase 2: Systèmes Core (Semaines 3-4)
-- [ ] **Atome B1**: BloomMachine
-- [ ] **Atome B2**: PBRMachine
+### Phase 2: Systèmes Core (Semaines 3-4) ✅ TERMINÉ
+- [x] **Atome B1**: BloomMachine ✅
+- [x] **Atome B2**: PBRMachine → VisualEffectsMachine ✅
 - [ ] **Atome B3**: LightingMachine
 
 ### Phase 3: Systèmes Avancés (Semaines 5-6)
@@ -349,15 +349,35 @@ const frameSchedulerMachine = createMachine({
 
 **📂 Voir**: `15_ATOME_D1_FRAMESCHEDULER_COMPLET.md`
 
+#### 🎯 Atome B1 - BloomMachine ✅ COMPLET
+- ✅ **Intégration**: Dans VisualEffectsMachine unifiée
+- ✅ **Architecture**: XState parallèle (région bloom)
+- ✅ **Tests**: Validation visuelle Three.js
+- ✅ **API**: useBloomMachine préservée (rétrocompatibilité)
+- ✅ **Performance**: Registry partagé optimisé
+
+**📂 Voir**: `15.1_ATOME_B1_BLOOMACHINE_ANALYSE.md`
+
+#### 🎯 Atome B2 - PBRMachine → VisualEffectsMachine ✅ COMPLET
+- ✅ **Architecture**: Machine XState parallèle 4 régions
+- ✅ **Implémentation**: Bloom + PBR + Environment + Security
+- ✅ **Tests**: Validation React/Three.js complète
+- ✅ **API**: Hook `useVisualEffects` unifié
+- ✅ **Migration**: Feature flag + 0 breaking change
+- ✅ **Performance**: Registry partagé, lazy loading HDR
+- ✅ **Validation visuelle**: Contrôle XState → Three.js confirmé
+
+**📂 Voir**: `16.1_ATOME_B2_IMPLEMENTATION_COMPLETE.md`
+
 #### 🎯 Prochains Atomes Prioritaires
 
-**Recommandation**: **Atome B1** (Bloom → BloomMachine)
-- 🔗 **Utilise** FrameScheduler pour timing
-- 🎯 **Système critique** (bloom effects)
-- 📊 **Complexité modérée** (bon candidat)
+**Recommandation**: **Atome C1** ou **C2** (Particle/ElectricArc)
+- 🔗 **S'appuie** sur VisualEffectsMachine foundation
+- 🎯 **Systèmes avancés** (effets visuels complexes)
+- 📊 **Architecture** XState maintenant mature
 
 **Alternatives**:
 - 🎯 **Atome A1** (window.scene → SceneService)
-- 🎯 **Atome B2** (PBR → PBRMachine)
+- 🎯 **Migration progressive** SceneStateController → XState
 
 **Pour continuer la refactorisation atomique, dis-moi quel atome attaquer ensuite !**
