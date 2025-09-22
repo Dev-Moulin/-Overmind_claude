@@ -1,140 +1,30 @@
-// 🌟 useBloomMachine Hook - Atome B1
+// 🌟 useBloomMachine Hook - Atome B1 (ADAPTÉ POUR COMPATIBILITÉ)
 // Hook React pour intégration BloomMachine avec UI
+// ⚠️ LEGACY: Ce hook est maintenant un proxy vers useVisualEffects
 
 import { useCallback, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
-import { useMachine } from '@xstate/react';
-import { bloomMachine } from './machine';
-import {
-  enableGlobalBloom,
-  disableGlobalBloom,
-  updateGroupBloom,
-  applySecurityPreset,
-  detectAndRegisterObjects as detectAndRegisterObjectsService,
-  syncWithRenderer as syncWithRendererService,
-  dispose as disposeService
-} from './services';
-import {
-  updateGlobalParams,
-  syncGlobalWithRenderer,
-  updateGroupIris,
-  updateGroupEyeRings,
-  updateGroupRevealRings,
-  updateGroupMagicRings,
-  updateGroupArms,
-  registerIrisObjects,
-  registerEyeRingsObjects,
-  registerRevealRingsObjects,
-  registerMagicRingsObjects,
-  registerArmsObjects,
-  detectAndRegisterObjects as detectAndRegisterObjectsAction,
-  syncWithFrameScheduler,
-  syncWithRenderer as syncWithRendererAction,
-  forceRefresh,
-  notifySecurityTransition,
-  dispose as disposeAction,
-  logError
-} from './actions';
-import {
-  isValidSecurityPreset,
-  canEnableBloom,
-  canDisableBloom,
-  isValidGroup,
-  hasGroupObjects,
-  isValidThreshold,
-  isValidStrength,
-  isValidRadius,
-  isValidExposure,
-  isValidEmissiveColor,
-  isValidEmissiveIntensity,
-  hasFrameScheduler,
-  hasSimpleBloomSystem,
-  hasBloomControlCenter,
-  canUpdateGroup,
-  isPerformanceMode,
-  shouldThrottleUpdates,
-  hasValidModelForDetection,
-  isSecurityTransitioning,
-  canApplySecurityPreset,
-  hasObjectsInAnyGroup,
-  shouldAutoSync,
-  canDispose,
-  shouldLogPerformance
-} from './guards';
+import { useVisualEffects } from '../visualEffects/useVisualEffects';
+import type { UseVisualEffectsOptions } from '../visualEffects/useVisualEffects';
 import type {
-  BloomContext,
-  BloomGroupType,
+  VisualGroupType as BloomGroupType,
   SecurityPreset,
-  BloomMachineHook
-} from './types';
+  VisualEffectsHook
+} from '../visualEffects/types';
 
-// Configuration du hook avec services et actions
-const bloomMachineWithImplementations = bloomMachine.withConfig({
-  services: {
-    enableGlobalBloom,
-    disableGlobalBloom,
-    updateGroupBloom,
-    applySecurityPreset,
-    detectAndRegisterObjects: detectAndRegisterObjectsService,
-    syncWithRenderer: syncWithRendererService,
-    dispose: disposeService
-  },
+// ============================================
+// COMPATIBILITÉ AVEC L'ANCIENNE API
+// ============================================
 
-  actions: {
-    updateGlobalParams,
-    syncGlobalWithRenderer,
-    updateGroupIris,
-    updateGroupEyeRings,
-    updateGroupRevealRings,
-    updateGroupMagicRings,
-    updateGroupArms,
-    registerIrisObjects,
-    registerEyeRingsObjects,
-    registerRevealRingsObjects,
-    registerMagicRingsObjects,
-    registerArmsObjects,
-    detectAndRegisterObjects: detectAndRegisterObjectsAction,
-    syncWithFrameScheduler,
-    syncWithRenderer: syncWithRendererAction,
-    forceRefresh,
-    notifySecurityTransition,
-    dispose: disposeAction,
-    logError
-  },
-
-  guards: {
-    isValidSecurityPreset,
-    canEnableBloom,
-    canDisableBloom,
-    isValidGroup,
-    hasGroupObjects,
-    isValidThreshold,
-    isValidStrength,
-    isValidRadius,
-    isValidExposure,
-    isValidEmissiveColor,
-    isValidEmissiveIntensity,
-    hasFrameScheduler,
-    hasSimpleBloomSystem,
-    hasBloomControlCenter,
-    canUpdateGroup,
-    isPerformanceMode,
-    shouldThrottleUpdates,
-    hasValidModelForDetection,
-    isSecurityTransitioning,
-    canApplySecurityPreset,
-    hasObjectsInAnyGroup,
-    shouldAutoSync,
-    canDispose,
-    shouldLogPerformance
-  }
-});
-
+// Mapping des options pour compatibilité
 export interface UseBloomMachineOptions {
-  // Systèmes externes à injecter
+  // Systèmes externes (mappés vers useVisualEffects)
   simpleBloomSystem?: any;
   bloomControlCenter?: any;
   frameScheduler?: any;
+  renderer?: THREE.WebGLRenderer;
+  scene?: THREE.Scene;
+  camera?: THREE.Camera;
 
   // Configuration
   autoStart?: boolean;
@@ -146,11 +36,50 @@ export interface UseBloomMachineOptions {
   onError?: (error: Error) => void;
 }
 
+// Interface de retour adaptée
+export interface BloomMachineHook {
+  // État (proxy vers visualEffects.bloom)
+  state: {
+    value: string;
+    context: {
+      global: any;
+      groups: any;
+    };
+  };
+  send: (event: any) => void;
+
+  // Contrôles bloom (proxy)
+  enableBloom: () => void;
+  disableBloom: () => void;
+  updateGlobal: (params: any) => void;
+  updateGroup: (group: BloomGroupType, params: any) => void;
+  registerObjects: (group: BloomGroupType, objects: Map<string, THREE.Mesh>) => void;
+  setSecurity: (preset: SecurityPreset) => void;
+  detectObjects: (model: THREE.Group | THREE.Mesh) => void;
+  syncWithRenderer: () => void;
+  forceRefresh: () => void;
+  dispose: () => void;
+
+  // État dérivé (proxy)
+  isEnabled: boolean;
+  currentSecurity: SecurityPreset | null;
+  isSecurityTransitioning: boolean;
+  groupCounts: Record<BloomGroupType, number>;
+  performance: any;
+}
+
 export const useBloomMachine = (options: UseBloomMachineOptions = {}): BloomMachineHook => {
+  // ⚠️ AVERTISSEMENT DE COMPATIBILITÉ
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('🔄 useBloomMachine is now a compatibility layer. Consider migrating to useVisualEffects for full functionality.');
+  }
   const {
     simpleBloomSystem,
     bloomControlCenter,
     frameScheduler,
+    renderer,
+    scene,
+    camera,
     autoStart = false,
     enablePerformanceMonitoring = true,
     debugMode = false,
@@ -158,203 +87,119 @@ export const useBloomMachine = (options: UseBloomMachineOptions = {}): BloomMach
     onError
   } = options;
 
-  // Machine avec systèmes injectés
-  const machineWithContext = useMemo(() => {
-    return bloomMachineWithImplementations.withContext({
-      ...bloomMachineWithImplementations.context,
-      simpleBloomSystem,
-      bloomControlCenter,
-      frameScheduler,
-      performance: {
-        updateCount: 0,
-        lastUpdateTime: Date.now(),
-        averageUpdateTime: 0
-      }
-    });
-  }, [simpleBloomSystem, bloomControlCenter, frameScheduler]);
-
-  const [state, send, service] = useMachine(machineWithContext, {
-    devTools: debugMode
+  // Utiliser useVisualEffects en interne
+  const visualEffects = useVisualEffects({
+    renderer,
+    scene,
+    camera,
+    autoInit: autoStart,
+    enablePerformanceMonitoring,
+    debugMode,
+    onStateChange,
+    onError
   });
 
-  // Callbacks optimisés
+  // État proxy pour compatibilité
+  const bloomState = useMemo(() => ({
+    value: typeof visualEffects.state.value === 'object' && visualEffects.state.value.bloom
+      ? visualEffects.state.value.bloom
+      : 'disabled',
+    context: {
+      global: visualEffects.context.bloom.global,
+      groups: visualEffects.context.bloom.groups
+    }
+  }), [visualEffects.state.value, visualEffects.context.bloom]);
+
+  // Proxy callbacks vers visualEffects
   const enableBloom = useCallback(() => {
-    console.log('🌟 useBloomMachine: Enabling bloom...');
-    send({ type: 'ENABLE_BLOOM' });
-  }, [send]);
+    console.log('🌟 useBloomMachine (proxy): Enabling bloom...');
+    visualEffects.bloom.enable();
+  }, [visualEffects.bloom]);
 
   const disableBloom = useCallback(() => {
-    console.log('🌟 useBloomMachine: Disabling bloom...');
-    send({ type: 'DISABLE_BLOOM' });
-  }, [send]);
+    console.log('🌟 useBloomMachine (proxy): Disabling bloom...');
+    visualEffects.bloom.disable();
+  }, [visualEffects.bloom]);
 
-  const updateGlobal = useCallback((params: Partial<BloomContext['global']>) => {
-    console.log('🌟 useBloomMachine: Updating global parameters...', params);
-    send({ type: 'UPDATE_GLOBAL', ...params });
-  }, [send]);
+  const updateGlobal = useCallback((params: any) => {
+    console.log('🌟 useBloomMachine (proxy): Updating global parameters...', params);
+    visualEffects.bloom.updateGlobal(params);
+  }, [visualEffects.bloom]);
 
-  const updateGroup = useCallback((group: BloomGroupType, params: Partial<BloomContext['groups'][BloomGroupType]>) => {
-    console.log(`🎭 useBloomMachine: Updating group ${group}...`, params);
-
-    const eventTypeMap = {
-      iris: 'UPDATE_GROUP_IRIS',
-      eyeRings: 'UPDATE_GROUP_EYERINGS',
-      revealRings: 'UPDATE_GROUP_REVEALRINGS',
-      magicRings: 'UPDATE_GROUP_MAGICRINGS',
-      arms: 'UPDATE_GROUP_ARMS'
-    };
-
-    const eventType = eventTypeMap[group];
-    if (eventType) {
-      send({ type: eventType, ...params });
-    } else {
-      console.warn(`⚠️ useBloomMachine: Unknown group ${group}`);
-    }
-  }, [send]);
+  const updateGroup = useCallback((group: BloomGroupType, params: any) => {
+    console.log(`🎭 useBloomMachine (proxy): Updating group ${group}...`, params);
+    visualEffects.bloom.updateGroup(group, params);
+  }, [visualEffects.bloom]);
 
   const registerObjects = useCallback((group: BloomGroupType, objects: Map<string, THREE.Mesh>) => {
-    console.log(`🔍 useBloomMachine: Registering ${objects.size} objects for group ${group}`);
-    send({ type: 'REGISTER_OBJECTS', group, objects });
-  }, [send]);
+    console.log(`🔍 useBloomMachine (proxy): Registering ${objects.size} objects for group ${group}`);
+    visualEffects.objects.register(group, objects);
+  }, [visualEffects.objects]);
 
   const setSecurity = useCallback((preset: SecurityPreset) => {
-    console.log(`🔒 useBloomMachine: Setting security to ${preset}`);
-    send({ type: 'SET_SECURITY', preset });
-  }, [send]);
+    console.log(`🔒 useBloomMachine (proxy): Setting security to ${preset}`);
+    visualEffects.security.setPreset(preset);
+  }, [visualEffects.security]);
 
   const detectObjects = useCallback((model: THREE.Group | THREE.Mesh) => {
-    console.log('🔍 useBloomMachine: Detecting objects...');
-    send({ type: 'DETECT_OBJECTS', model });
-  }, [send]);
+    console.log('🔍 useBloomMachine (proxy): Detecting objects...');
+    visualEffects.objects.detect(model);
+  }, [visualEffects.objects]);
 
   const syncWithRenderer = useCallback(() => {
-    console.log('🔄 useBloomMachine: Syncing with renderer...');
-    send({ type: 'SYNC_WITH_RENDERER' });
-  }, [send]);
+    console.log('🔄 useBloomMachine (proxy): Syncing with renderer...');
+    visualEffects.send({ type: 'SYSTEM.SYNC' });
+  }, [visualEffects.send]);
 
   const forceRefresh = useCallback(() => {
-    console.log('🔥 useBloomMachine: Force refresh...');
-    send({ type: 'FORCE_REFRESH' });
-  }, [send]);
+    console.log('🔥 useBloomMachine (proxy): Force refresh...');
+    visualEffects.send({ type: 'SYSTEM.SYNC' });
+  }, [visualEffects.send]);
 
   const dispose = useCallback(() => {
-    console.log('🧹 useBloomMachine: Disposing...');
-    send({ type: 'DISPOSE' });
-  }, [send]);
+    console.log('🧹 useBloomMachine (proxy): Disposing...');
+    visualEffects.dispose();
+  }, [visualEffects.dispose]);
 
-  // État dérivé optimisé
-  const derivedState = useMemo(() => {
-    const context = state.context as BloomContext;
+  // État dérivé proxy
+  const derivedState = useMemo(() => ({
+    // États principaux (proxy vers visualEffects)
+    isEnabled: visualEffects.bloom.isEnabled,
+    currentSecurity: visualEffects.security.currentPreset,
+    isSecurityTransitioning: visualEffects.security.isTransitioning,
 
-    return {
-      // États principaux
-      isEnabled: context.global?.enabled || false,
-      currentSecurity: context.security?.currentPreset || null,
-      isSecurityTransitioning: context.security?.isTransitioning || false,
+    // Compteurs objets (proxy)
+    groupCounts: visualEffects.objects.counts,
 
-      // Compteurs objets par groupe
-      groupCounts: {
-        iris: context.groups?.iris?.objects?.size || 0,
-        eyeRings: context.groups?.eyeRings?.objects?.size || 0,
-        revealRings: context.groups?.revealRings?.objects?.size || 0,
-        magicRings: context.groups?.magicRings?.objects?.size || 0,
-        arms: context.groups?.arms?.objects?.size || 0
-      },
+    // Performance (proxy)
+    performance: visualEffects.performance
+  }), [visualEffects]);
 
-      // Performance metrics
-      performance: context.performance || {
-        updateCount: 0,
-        lastUpdateTime: 0,
-        averageUpdateTime: 0
-      },
-
-      // États des systèmes
-      systems: {
-        hasSimpleBloomSystem: context.simpleBloomSystem !== null,
-        hasBloomControlCenter: context.bloomControlCenter !== null,
-        hasFrameScheduler: context.frameScheduler !== null
-      },
-
-      // États machine (gestion des états parallèles)
-      globalState: typeof state.value === 'object' && state.value.global ? state.value.global : 'disabled',
-      securityState: typeof state.value === 'object' && state.value.security ? state.value.security : 'normal',
-      groupsStates: {
-        iris: typeof state.value === 'object' && state.value.groups && typeof state.value.groups === 'object' && state.value.groups.iris ? state.value.groups.iris : 'idle',
-        eyeRings: typeof state.value === 'object' && state.value.groups && typeof state.value.groups === 'object' && state.value.groups.eyeRings ? state.value.groups.eyeRings : 'idle',
-        revealRings: typeof state.value === 'object' && state.value.groups && typeof state.value.groups === 'object' && state.value.groups.revealRings ? state.value.groups.revealRings : 'idle',
-        magicRings: typeof state.value === 'object' && state.value.groups && typeof state.value.groups === 'object' && state.value.groups.magicRings ? state.value.groups.magicRings : 'idle',
-        arms: typeof state.value === 'object' && state.value.groups && typeof state.value.groups === 'object' && state.value.groups.arms ? state.value.groups.arms : 'idle'
-      }
-    };
-  }, [state]);
-
-  // Callbacks d'événements
-  useEffect(() => {
-    if (onStateChange) {
-      onStateChange(state);
-    }
-  }, [state, onStateChange]);
-
-  // Gestion des erreurs
-  useEffect(() => {
-    const subscription = service.subscribe({
-      error: (error) => {
-        console.error('❌ BloomMachine Error:', error);
-        if (onError) {
-          onError(error);
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [service, onError]);
-
-  // Auto-start si demandé
+  // Auto-start si demandé (proxy)
   useEffect(() => {
     if (autoStart && !derivedState.isEnabled) {
       enableBloom();
     }
   }, [autoStart, derivedState.isEnabled, enableBloom]);
 
-  // Performance monitoring
-  useEffect(() => {
-    if (enablePerformanceMonitoring && frameScheduler) {
-      const interval = setInterval(() => {
-        send({
-          type: 'SYNC_WITH_FRAMESCHEDULER',
-          fps: frameScheduler.performance?.fps || 60,
-          deltaTime: 16.67 // Default 60fps
-        });
-      }, 1000);
-
-      return () => clearInterval(interval);
-    }
-  }, [enablePerformanceMonitoring, frameScheduler, send]);
-
   return {
-    // État
-    state,
-    send,
+    // État (proxy compatible)
+    state: bloomState,
+    send: visualEffects.send,
 
-    // Contrôles globaux
+    // Contrôles bloom (proxy)
     enableBloom,
     disableBloom,
     updateGlobal,
-
-    // Contrôles groupes
     updateGroup,
     registerObjects,
-
-    // Contrôles sécurité
     setSecurity,
-
-    // Utilitaires
     detectObjects,
     syncWithRenderer,
     forceRefresh,
     dispose,
 
-    // État dérivé
+    // État dérivé (proxy)
     ...derivedState
   };
 };
