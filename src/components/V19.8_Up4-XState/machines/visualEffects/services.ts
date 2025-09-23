@@ -45,12 +45,14 @@ export const enableGlobalBloom = async (context: VisualEffectsContext) => {
   // Simuler l'activation du bloom
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  // Si on a accès au système bloom externe
-  if ((window as any).simpleBloomSystem) {
-    (window as any).simpleBloomSystem.setBloomEnabled(true);
-    (window as any).simpleBloomSystem.updateBloom('threshold', context.bloom.global.threshold);
-    (window as any).simpleBloomSystem.updateBloom('strength', context.bloom.global.strength);
-    (window as any).simpleBloomSystem.updateBloom('radius', context.bloom.global.radius);
+  // ✅ CONNEXION LEGACY: Utiliser bridge au lieu de window direct
+  if (context.legacyBridge) {
+    const success = context.legacyBridge.safeSetBloomEnabled(true);
+    if (success) {
+      context.legacyBridge.safeUpdateBloom('threshold', context.bloom.global.threshold);
+      context.legacyBridge.safeUpdateBloom('strength', context.bloom.global.strength);
+      context.legacyBridge.safeUpdateBloom('radius', context.bloom.global.radius);
+    }
   }
 
   console.log('✅ Global bloom enabled with visual test feedback');
@@ -87,8 +89,9 @@ export const disableGlobalBloom = async (context: VisualEffectsContext) => {
 
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  if ((window as any).simpleBloomSystem) {
-    (window as any).simpleBloomSystem.setBloomEnabled(false);
+  // ✅ CONNEXION LEGACY: Bridge au lieu de window
+  if (context.legacyBridge) {
+    context.legacyBridge.safeSetBloomEnabled(false);
   }
 
   console.log('✅ Global bloom disabled with visual test cleanup');
@@ -281,15 +284,13 @@ export const applySecurityPreset = async (
   for (let i = 0; i <= steps; i++) {
     const progress = i / steps;
 
-    // Interpoler les valeurs
-    if (config.bloomPreset && (window as any).simpleBloomSystem) {
-      const bloomSystem = (window as any).simpleBloomSystem;
-
+    // ✅ CONNEXION LEGACY: Interpoler les valeurs via bridge
+    if (config.bloomPreset && context.legacyBridge) {
       if (config.bloomPreset.strength !== undefined) {
         const currentStrength = context.bloom.global.strength;
         const targetStrength = config.bloomPreset.strength;
         const interpolatedStrength = currentStrength + (targetStrength - currentStrength) * progress;
-        bloomSystem.updateBloom('strength', interpolatedStrength);
+        context.legacyBridge.safeUpdateBloom('strength', interpolatedStrength);
       }
     }
 
@@ -412,5 +413,34 @@ export const dispose = async (context: VisualEffectsContext) => {
   });
 
   console.log('✅ All resources disposed');
+  return { success: true };
+};
+
+// ============================================
+// SERVICES LIGHTING (B3)
+// ============================================
+
+export const initBaseLighting = async (context: VisualEffectsContext) => {
+  console.log('🔦 Initializing base lighting...');
+
+  // Simuler initialisation simple pour test
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Mock setup - dans une vraie implémentation, on utiliserait context.legacyBridge
+  if (context.legacyBridge) {
+    const success = context.legacyBridge.safeSetGlobalLightingMultipliers(
+      context.lighting.baseLighting.ambientIntensity,
+      context.lighting.baseLighting.directionalIntensity
+    );
+
+    if (success) {
+      console.log('✅ Base lighting initialized via legacy bridge');
+    } else {
+      console.warn('⚠️ Legacy bridge failed, using XState-only mode');
+    }
+  } else {
+    console.log('✅ Base lighting initialized (XState-only mode)');
+  }
+
   return { success: true };
 };

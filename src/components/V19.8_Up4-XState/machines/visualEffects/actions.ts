@@ -369,3 +369,93 @@ export const disposeAllResources = (ctx: VisualEffectsContext) => {
 export const logSystemError = (ctx: VisualEffectsContext, event: any) => {
   console.error('❌ System Error:', event.error);
 };
+
+// ============================================
+// ACTIONS LIGHTING (B3)
+// ============================================
+
+export const logLightingInit = () => {
+  console.log('🔦 Initializing lighting system...');
+};
+
+export const logLightingError = (ctx: VisualEffectsContext, event: any) => {
+  console.error('❌ Lighting Error:', event);
+};
+
+export const applyLightingPreset = assign<VisualEffectsContext, any>({
+  lighting: (ctx, event) => ({
+    ...ctx.lighting,
+    currentPreset: event.preset
+  }),
+  performance: (ctx) => ({
+    ...ctx.performance,
+    updateCount: ctx.performance.updateCount + 1,
+    lastUpdateTime: Date.now()
+  })
+});
+
+export const updateLightingIntensity = assign<VisualEffectsContext, any>({
+  lighting: (ctx, event) => ({
+    ...ctx.lighting,
+    baseLighting: {
+      ...ctx.lighting.baseLighting,
+      ambientIntensity: event.ambient ?? ctx.lighting.baseLighting.ambientIntensity,
+      directionalIntensity: event.directional ?? ctx.lighting.baseLighting.directionalIntensity
+    }
+  }),
+  performance: (ctx) => ({
+    ...ctx.performance,
+    updateCount: ctx.performance.updateCount + 1,
+    lastUpdateTime: Date.now()
+  })
+});
+
+export const enableAdvancedLighting = assign<VisualEffectsContext, any>({
+  lighting: (ctx) => ({
+    ...ctx.lighting,
+    advancedLighting: {
+      ...ctx.lighting.advancedLighting,
+      enabled: true
+    }
+  })
+});
+
+export const disableAdvancedLighting = assign<VisualEffectsContext, any>({
+  lighting: (ctx) => ({
+    ...ctx.lighting,
+    advancedLighting: {
+      ...ctx.lighting.advancedLighting,
+      enabled: false
+    }
+  })
+});
+
+export const enableAreaLights = assign<VisualEffectsContext, any>({
+  lighting: (ctx) => ({
+    ...ctx.lighting,
+    areaLights: {
+      ...ctx.lighting.areaLights,
+      enabled: true
+    }
+  })
+});
+
+export const enableLightProbes = assign<VisualEffectsContext, any>({
+  lighting: (ctx) => ({
+    ...ctx.lighting,
+    lightProbes: {
+      ...ctx.lighting.lightProbes,
+      enabled: true
+    }
+  })
+});
+
+export const enableHDRBoost = assign<VisualEffectsContext, any>({
+  lighting: (ctx) => ({
+    ...ctx.lighting,
+    hdrBoost: {
+      ...ctx.lighting.hdrBoost,
+      enabled: true
+    }
+  })
+});

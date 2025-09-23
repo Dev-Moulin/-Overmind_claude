@@ -13,20 +13,23 @@ import type {
   BloomGlobalConfig,
   PBRGlobalConfig,
   BloomGroupConfig,
-  PBRGroupConfig
+  PBRGroupConfig,
+  VisualEffectsOptions
 } from './types';
+import { LightingPreset } from '../lighting/types';
+import { LegacySystemsBridge } from '../../bridges/LegacySystemsBridge';
+// Import pour exposition window
+import '../lighting/productionTests';
 
-// Options de configuration du hook
-export interface UseVisualEffectsOptions {
+// ✅ ADAPTATION: Utiliser VisualEffectsOptions directement et étendre au besoin
+export interface UseVisualEffectsOptions extends VisualEffectsOptions {
   // Systèmes externes
   renderer?: THREE.WebGLRenderer;
   scene?: THREE.Scene;
   camera?: THREE.Camera;
 
-  // Configuration
+  // Configuration (héritée de VisualEffectsOptions)
   autoInit?: boolean;
-  enablePerformanceMonitoring?: boolean;
-  debugMode?: boolean;
 
   // Callbacks
   onStateChange?: (state: any) => void;
@@ -41,12 +44,24 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     autoInit = false,
     enablePerformanceMonitoring = true,
     debugMode = false,
+    legacyBridge, // ✅ AJOUT: Bridge legacy depuis options
+    initialContext,
     onStateChange,
     onError
   } = options;
 
-  // ✅ CORRECTION: Machine statique - Ne change jamais
+  // ✅ AJOUT: Créer bridge si pas fourni
+  const activeLegacyBridge = useMemo(() => {
+    return legacyBridge || new LegacySystemsBridge();
+  }, [legacyBridge]);
+
+  // ✅ MODIFICATION: Injecter bridge et contexte initial
   const [state, send, service] = useMachine(visualEffectsMachineWithConfig, {
+    context: {
+      ...visualEffectsMachineWithConfig.context,
+      ...initialContext,
+      legacyBridge: activeLegacyBridge // ✅ Injection bridge ici
+    },
     devTools: debugMode
   });
 
@@ -156,6 +171,55 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     currentPreset: context.security.currentPreset,
     isTransitioning: context.security.isTransitioning
   }), [send, context.security.currentPreset, context.security.isTransitioning]);
+
+  // ====================================
+  // CONTRÔLES LIGHTING (B3)
+  // ====================================
+
+  const lightingControls = useMemo(() => ({
+    enableBase: () => {
+      console.log('🔦 useVisualEffects: Enabling base lighting...');
+      send({ type: 'LIGHTING.ENABLE_BASE' });
+    },
+
+    disableBase: () => {
+      console.log('🔦 useVisualEffects: Disabling base lighting...');
+      send({ type: 'LIGHTING.DISABLE_BASE' });
+    },
+
+    applyPreset: (preset: LightingPreset) => {
+      console.log(`🔦 useVisualEffects: Applying lighting preset ${preset}...`);
+      send({ type: 'LIGHTING.APPLY_PRESET', preset });
+    },
+
+    updateIntensity: (ambient: number, directional: number) => {
+      console.log(`🔦 useVisualEffects: Updating lighting intensity (${ambient}, ${directional})...`);
+      send({ type: 'LIGHTING.UPDATE_INTENSITY', ambient, directional });
+    },
+
+    enableAdvanced: () => {
+      console.log('🔦 useVisualEffects: Enabling advanced lighting...');
+      send({ type: 'LIGHTING.ENABLE_ADVANCED' });
+    },
+
+    enableArea: () => {
+      console.log('🔦 useVisualEffects: Enabling area lights...');
+      send({ type: 'LIGHTING.ENABLE_AREA' });
+    },
+
+    enableProbes: () => {
+      console.log('🔦 useVisualEffects: Enabling light probes...');
+      send({ type: 'LIGHTING.ENABLE_PROBES' });
+    },
+
+    enableHDRBoost: () => {
+      console.log('🔦 useVisualEffects: Enabling HDR boost...');
+      send({ type: 'LIGHTING.ENABLE_HDR_BOOST' });
+    },
+
+    currentPreset: context.lighting.currentPreset,
+    isActive: state.matches({ lighting: 'active' }) || state.matches({ lighting: 'partial' })
+  }), [send, context.lighting.currentPreset, state]);
 
   // ====================================
   // GESTION OBJETS
@@ -278,7 +342,8 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
   // RETURN HOOK
   // ====================================
 
-  return {
+  // Mémoriser le retour pour éviter les re-renders constants
+  return useMemo(() => ({
     // État et contexte
     state,
     context,
@@ -289,12 +354,24 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     pbr: pbrControls,
     environment: environmentControls,
     security: securityControls,
+    lighting: lightingControls,
     objects: objectsControls,
 
     // Performance et utilitaires
     performance: context.performance,
     dispose
-  };
+  }), [
+    state,
+    context,
+    send,
+    bloomControls,
+    pbrControls,
+    environmentControls,
+    securityControls,
+    lightingControls,
+    objectsControls,
+    dispose
+  ]);
 };
 
 export default useVisualEffects;

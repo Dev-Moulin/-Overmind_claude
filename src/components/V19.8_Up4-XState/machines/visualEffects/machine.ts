@@ -10,6 +10,9 @@ import type {
   BloomGlobalConfig,
   PBRGlobalConfig
 } from './types';
+import { LightingPreset, DEFAULT_PERFORMANCE_CONFIG, DEFAULT_MIGRATION_STATE, MigrationLevel } from '../lighting/types';
+import * as actions from './actions';
+import * as services from './services';
 
 // ============================================
 // CONTEXTE INITIAL
@@ -109,6 +112,71 @@ const initialContext: VisualEffectsContext = {
         pbrPreset: { metalness: 0.5, roughness: 0.5 }
       }
     }
+  },
+
+  // ✅ NOUVEAU: Lighting (B3)
+  lighting: {
+    // 5 sous-systèmes parallèles
+    baseLighting: {
+      enabled: false,
+      ambientIntensity: 0.4,
+      directionalIntensity: 1.0,
+      shadowsEnabled: false
+    },
+    advancedLighting: {
+      enabled: false,
+      spotLights: { count: 0, intensity: 1.0 },
+      directionalLights: { count: 0, intensity: 1.0 }
+    },
+    areaLights: {
+      enabled: false,
+      lights: []
+    },
+    lightProbes: {
+      enabled: false,
+      intensity: 1.0,
+      environmentSync: false,
+      lastUpdateTime: 0
+    },
+    hdrBoost: {
+      enabled: false,
+      multiplier: 1.0,
+      metallicEnhancement: false,
+      toneMapping: 'ACESFilmic'
+    },
+
+    // Lazy loading
+    lazySubsystems: {
+      pointLights: {
+        initialized: false,
+        loading: false,
+        config: { maxLights: 100 }
+      },
+      shadowMaps: {
+        initialized: false,
+        loading: false,
+        config: { maxLights: 50, resolution: 1024 }
+      }
+    },
+
+    // Performance monitoring (consensus)
+    performance: {
+      frameTime: 0,
+      avgFrameTime: 0,
+      maxFrameTime: 0,
+      fps: 60,
+      batchEfficiency: 1.0,
+      fallbackCount: 0,
+      adaptiveThrottling: false
+    },
+    performanceConfig: DEFAULT_PERFORMANCE_CONFIG,
+
+    // Migration state (Claude IA)
+    migrationState: { ...DEFAULT_MIGRATION_STATE, level: MigrationLevel.OFF },
+
+    // Current state
+    currentPreset: LightingPreset.DEFAULT,
+    batchQueue: []
   },
 
   // Systèmes externes
@@ -432,6 +500,99 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
           }
         }
       }
+    },
+
+    // ====================================
+    // RÉGION LIGHTING (B3)
+    // ====================================
+    lighting: {
+      initial: 'uninitialized',
+      states: {
+        uninitialized: {
+          on: {
+            'LIGHTING.ENABLE_BASE': {
+              target: 'initializing',
+              actions: 'logLightingInit'
+            }
+          }
+        },
+
+        initializing: {
+          invoke: {
+            id: 'initLightingService',
+            src: 'initBaseLighting',
+            onDone: {
+              target: 'partial',
+              actions: assign({
+                lighting: (ctx) => ({
+                  ...ctx.lighting,
+                  baseLighting: { ...ctx.lighting.baseLighting, enabled: true }
+                })
+              })
+            },
+            onError: {
+              target: 'error',
+              actions: 'logLightingError'
+            }
+          }
+        },
+
+        partial: {
+          on: {
+            'LIGHTING.APPLY_PRESET': {
+              actions: 'applyLightingPreset'
+            },
+            'LIGHTING.UPDATE_INTENSITY': {
+              actions: 'updateLightingIntensity'
+            },
+            'LIGHTING.ENABLE_ADVANCED': {
+              target: 'active',
+              actions: 'enableAdvancedLighting'
+            },
+            'LIGHTING.DISABLE_BASE': {
+              target: 'uninitialized',
+              actions: assign({
+                lighting: (ctx) => ({
+                  ...ctx.lighting,
+                  baseLighting: { ...ctx.lighting.baseLighting, enabled: false }
+                })
+              })
+            }
+          }
+        },
+
+        active: {
+          on: {
+            'LIGHTING.APPLY_PRESET': {
+              actions: 'applyLightingPreset'
+            },
+            'LIGHTING.UPDATE_INTENSITY': {
+              actions: 'updateLightingIntensity'
+            },
+            'LIGHTING.ENABLE_AREA': {
+              actions: 'enableAreaLights'
+            },
+            'LIGHTING.ENABLE_PROBES': {
+              actions: 'enableLightProbes'
+            },
+            'LIGHTING.ENABLE_HDR_BOOST': {
+              actions: 'enableHDRBoost'
+            },
+            'LIGHTING.DISABLE_ADVANCED': {
+              target: 'partial',
+              actions: 'disableAdvancedLighting'
+            }
+          }
+        },
+
+        error: {
+          on: {
+            'LIGHTING.ENABLE_BASE': {
+              target: 'initializing'
+            }
+          }
+        }
+      }
     }
   },
 
@@ -473,6 +634,20 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
       actions: 'logSystemError'
     }
   }
+}, {
+  actions: {
+    logLightingInit: actions.logLightingInit,
+    logLightingError: actions.logLightingError,
+    applyLightingPreset: actions.applyLightingPreset,
+    updateLightingIntensity: actions.updateLightingIntensity,
+    enableAdvancedLighting: actions.enableAdvancedLighting,
+    enableAreaLights: actions.enableAreaLights,
+    enableLightProbes: actions.enableLightProbes,
+    enableHDRBoost: actions.enableHDRBoost
+  },
+  services: {
+    initBaseLighting: services.initBaseLighting
+  }
 });
 
 // ============================================
@@ -492,7 +667,7 @@ export const createVisualEffectsContext = (
 // Helper pour vérifier l'état d'une région
 export const isRegionInState = (
   state: any,
-  region: 'bloom' | 'pbr' | 'environment' | 'security',
+  region: 'bloom' | 'pbr' | 'environment' | 'security' | 'lighting',
   expectedState: string
 ): boolean => {
   return state.matches({ [region]: expectedState });

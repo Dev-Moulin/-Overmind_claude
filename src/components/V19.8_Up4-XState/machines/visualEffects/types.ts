@@ -2,6 +2,8 @@
 // Types TypeScript pour la machine XState des effets visuels
 
 import * as THREE from 'three';
+import type { LegacySystemsBridge } from '../../bridges/LegacySystemsBridge';
+import type { LightingContext, LightingPreset } from '../lighting/types';
 
 // ============================================
 // TYPES PARTAGÉS
@@ -117,10 +119,16 @@ export interface VisualEffectsContext {
   environment: EnvironmentContext;
   security: SecurityContext;
 
+  // ✅ NOUVEAU: Région lighting (B3)
+  lighting: LightingContext;
+
   // Systèmes externes
   renderer: THREE.WebGLRenderer | null;
   scene: THREE.Scene | null;
   camera: THREE.Camera | null;
+
+  // ✅ AJOUT: Bridge pour connexion legacy systems
+  legacyBridge?: LegacySystemsBridge;
 
   // Performance
   performance: {
@@ -162,6 +170,18 @@ export type SecurityEvent =
   | { type: 'SECURITY.TRANSITION_START' }
   | { type: 'SECURITY.TRANSITION_COMPLETE' };
 
+// 🔦 Événements Lighting (B3)
+export type LightingEvent =
+  | { type: 'LIGHTING.ENABLE_BASE' }
+  | { type: 'LIGHTING.DISABLE_BASE' }
+  | { type: 'LIGHTING.APPLY_PRESET'; preset: LightingPreset }
+  | { type: 'LIGHTING.UPDATE_INTENSITY'; ambient: number; directional: number }
+  | { type: 'LIGHTING.ENABLE_ADVANCED' }
+  | { type: 'LIGHTING.DISABLE_ADVANCED' }
+  | { type: 'LIGHTING.ENABLE_AREA' }
+  | { type: 'LIGHTING.ENABLE_PROBES' }
+  | { type: 'LIGHTING.ENABLE_HDR_BOOST' };
+
 // 📦 Événements Objects
 export type ObjectEvent =
   | { type: 'OBJECTS.REGISTER'; group: VisualGroupType; objects: Map<string, THREE.Mesh> }
@@ -184,6 +204,7 @@ export type VisualEffectsEvent =
   | PBREvent
   | EnvironmentEvent
   | SecurityEvent
+  | LightingEvent
   | ObjectEvent
   | SystemEvent;
 
@@ -197,6 +218,7 @@ export interface VisualEffectsStates {
   pbr: 'idle' | 'initializing' | 'active' | 'updating' | 'error';
   environment: 'unloaded' | 'loading' | 'processing' | 'ready' | 'error';
   security: 'normal' | 'transitioning' | 'applied';
+  lighting: 'uninitialized' | 'initializing' | 'partial' | 'active' | 'error';
 }
 
 // ============================================
@@ -240,6 +262,20 @@ export interface VisualEffectsHook {
     setPreset: (preset: SecurityPreset) => void;
     currentPreset: SecurityPreset | null;
     isTransitioning: boolean;
+  };
+
+  // ✅ NOUVEAU: Contrôles Lighting (B3)
+  lighting: {
+    enableBase: () => void;
+    disableBase: () => void;
+    applyPreset: (preset: LightingPreset) => void;
+    updateIntensity: (ambient: number, directional: number) => void;
+    enableAdvanced: () => void;
+    enableArea: () => void;
+    enableProbes: () => void;
+    enableHDRBoost: () => void;
+    currentPreset: LightingPreset | null;
+    isActive: boolean;
   };
 
   // Gestion objets
@@ -294,4 +330,18 @@ export interface VisualEffectsConfig {
   enablePerformanceMonitoring: boolean;
   autoDetectObjects: boolean;
   debugMode: boolean;
+}
+
+// ============================================
+// OPTIONS POUR HOOK
+// ============================================
+
+export interface VisualEffectsOptions {
+  // Configuration
+  initialContext?: Partial<VisualEffectsContext>;
+  enablePerformanceMonitoring?: boolean;
+  debugMode?: boolean;
+
+  // ✅ AJOUT: Injection optionnelle du bridge
+  legacyBridge?: LegacySystemsBridge;
 }

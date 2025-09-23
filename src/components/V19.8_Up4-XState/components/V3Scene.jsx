@@ -13,6 +13,9 @@ import { AnimationController } from '../systems/animationSystemes/index.js';
 
 // ✅ PHASE 4: Import diagnostic
 import '../tests/PHASE_4_VALIDATION_DIAGNOSTIC.js';
+
+// 🔦 B3 LIGHTING: Import feature flags tests
+import '../machines/lighting/testFeatureFlags';
 import { EyeRingRotationManager } from '../systems/eyeSystems/index.js';
 import { ModelRotationManager } from '../systems/eyeSystems/ModelRotationManager.js';
 import { RevealationSystem } from '../systems/revelationSystems/index.js';
@@ -132,15 +135,15 @@ export default function V3Scene() {
   useTempBloomSync(systemsInitialized);
 
   // ✨ NOUVEAU: VisualEffectsMachine (Atome B2) - Feature flag pour migration progressive
-  const [useXStateVisualEffects, setUseXStateVisualEffects] = useState(false); // 🚩 Feature flag contrôlable
+  const [useXStateVisualEffects, setUseXStateVisualEffects] = useState(true); // 🚩 Feature flag ACTIVÉ par défaut
 
   const visualEffects = useVisualEffects({
     renderer: useXStateVisualEffects ? renderer : null,
     scene: useXStateVisualEffects ? scene : null,
     camera: useXStateVisualEffects ? camera : null,
     autoInit: useXStateVisualEffects && systemsInitialized,
-    enablePerformanceMonitoring: false, // Éviter spam console
-    debugMode: false,
+    enablePerformanceMonitoring: true, // Monitoring activé pour debug
+    debugMode: true, // Debug activé pour voir les transitions
     onStateChange: useXStateVisualEffects ? (state) => {
       console.log('🎨 V3Scene: VisualEffects state change:', state.value);
     } : undefined,
@@ -148,6 +151,34 @@ export default function V3Scene() {
       console.error('❌ V3Scene: VisualEffects error:', error);
     } : undefined
   });
+
+  // 🔧 EXPOSER VISUAL EFFECTS pour tests browser
+  useEffect(() => {
+    if (useXStateVisualEffects && visualEffects?.state && visualEffects?.lighting) {
+      window.visualEffectsState = visualEffects.state;
+      window.visualEffectsContext = visualEffects.context;
+      window.visualEffectsControls = {
+        bloom: visualEffects.bloom,
+        pbr: visualEffects.pbr,
+        environment: visualEffects.environment,
+        security: visualEffects.security,
+        lighting: visualEffects.lighting,
+        objects: visualEffects.objects
+      };
+      // Log supprimé pour éviter spam
+    }
+    return () => {
+      if (window.visualEffectsState) {
+        delete window.visualEffectsState;
+      }
+      if (window.visualEffectsContext) {
+        delete window.visualEffectsContext;
+      }
+      if (window.visualEffectsControls) {
+        delete window.visualEffectsControls;
+      }
+    };
+  }, [useXStateVisualEffects, visualEffects?.lighting, visualEffects?.state]);
 
   // ✅ FONCTION STABLE POUR CHARGEMENT
   const handleLoadModel = useCallback((scene) => {
@@ -236,7 +267,7 @@ export default function V3Scene() {
         console.error('❌ V3Scene: Erreur détection objets:', error);
       }
     }
-  }, [useXStateVisualEffects, modelLoaded]);
+  }, [useXStateVisualEffects, modelLoaded, visualEffects.objects]);
 
   // ✅ FONCTION STABLE POUR AJUSTEMENT CAMÉRA
   const handleCameraFit = useCallback(() => {
