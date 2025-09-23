@@ -13,27 +13,20 @@ import type {
   BloomGlobalConfig,
   PBRGlobalConfig,
   BloomGroupConfig,
-  PBRGroupConfig,
-  VisualEffectsOptions
+  PBRGroupConfig
 } from './types';
-import { LightingPreset } from '../lighting/types';
-import { LegacySystemsBridge } from '../../bridges/LegacySystemsBridge';
-import { initializeB3B4Bridge } from '../../bridges/B3B4Bridge';
 
-// Types pour B4 Environment
-type QualityLevel = 'auto' | 'high' | 'medium' | 'low';
-// Import pour exposition window
-import '../lighting/productionTests';
-
-// ✅ ADAPTATION: Utiliser VisualEffectsOptions directement et étendre au besoin
-export interface UseVisualEffectsOptions extends VisualEffectsOptions {
+// Options de configuration du hook
+export interface UseVisualEffectsOptions {
   // Systèmes externes
   renderer?: THREE.WebGLRenderer;
   scene?: THREE.Scene;
   camera?: THREE.Camera;
 
-  // Configuration (héritée de VisualEffectsOptions)
+  // Configuration
   autoInit?: boolean;
+  enablePerformanceMonitoring?: boolean;
+  debugMode?: boolean;
 
   // Callbacks
   onStateChange?: (state: any) => void;
@@ -48,24 +41,12 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     autoInit = false,
     enablePerformanceMonitoring = true,
     debugMode = false,
-    legacyBridge, // ✅ AJOUT: Bridge legacy depuis options
-    initialContext,
     onStateChange,
     onError
   } = options;
 
-  // ✅ AJOUT: Créer bridge si pas fourni
-  const activeLegacyBridge = useMemo(() => {
-    return legacyBridge || new LegacySystemsBridge();
-  }, [legacyBridge]);
-
-  // ✅ MODIFICATION: Injecter bridge et contexte initial
+  // ✅ CORRECTION: Machine statique - Ne change jamais
   const [state, send, service] = useMachine(visualEffectsMachineWithConfig, {
-    context: {
-      ...visualEffectsMachineWithConfig.context,
-      ...initialContext,
-      legacyBridge: activeLegacyBridge // ✅ Injection bridge ici
-    },
     devTools: debugMode
   });
 
@@ -140,105 +121,27 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
   }), [send, context.pbr.global.enabled]);
 
   // ====================================
-  // CONTRÔLES B4 ENVIRONMENT (COMPLETS)
+  // CONTRÔLES ENVIRONMENT
   // ====================================
 
   const environmentControls = useMemo(() => ({
-    // Contrôles HDR complets
-    loadHDR: (path: string, config?: any) => {
-      console.log('🌍 useVisualEffects B4: Loading HDR environment...', path);
-      send({ type: 'HDR.LOAD', path, config });
-    },
-
-    unloadHDR: () => {
-      console.log('🌍 useVisualEffects B4: Unloading HDR environment...');
-      send({ type: 'HDR.UNLOAD' });
+    loadHDR: (path: string) => {
+      console.log('🌍 useVisualEffects: Loading HDR environment...', path);
+      send({ type: 'ENV.LOAD_HDR', path });
     },
 
     setIntensity: (intensity: number) => {
-      console.log('🌍 useVisualEffects B4: Setting HDR intensity...', intensity);
-      send({ type: 'HDR.SET_INTENSITY', intensity });
-    },
-
-    setRotation: (rotation: number) => {
-      console.log('🌍 useVisualEffects B4: Setting HDR rotation...', rotation);
-      send({ type: 'HDR.SET_ROTATION', rotation });
+      console.log('🌍 useVisualEffects: Setting environment intensity...', intensity);
+      send({ type: 'ENV.SET_INTENSITY', intensity });
     },
 
     toggleBackground: () => {
-      console.log('🌍 useVisualEffects B4: Toggling HDR background...');
-      send({ type: 'HDR.TOGGLE_BACKGROUND' });
+      console.log('🌍 useVisualEffects: Toggling environment background...');
+      send({ type: 'ENV.TOGGLE_BACKGROUND' });
     },
 
-    // Contrôles qualité B4
-    setQualityLevel: (level: QualityLevel) => {
-      console.log(`🌍 useVisualEffects B4: Setting quality level to ${level}...`);
-      send({ type: 'QUALITY.SET_LEVEL', level });
-    },
-
-    enableAdaptiveQuality: () => {
-      console.log('🌍 useVisualEffects B4: Enabling adaptive quality...');
-      send({ type: 'QUALITY.ENABLE_ADAPTIVE' });
-    },
-
-    disableAdaptiveQuality: () => {
-      console.log('🌍 useVisualEffects B4: Disabling adaptive quality...');
-      send({ type: 'QUALITY.DISABLE_ADAPTIVE' });
-    },
-
-    // Contrôles Bridge B3 ↔ B4
-    connectBridge: () => {
-      console.log('🔗 useVisualEffects B4: Connecting to B3 Lighting Bridge...');
-      send({ type: 'BRIDGE.CONNECT' });
-    },
-
-    disconnectBridge: () => {
-      console.log('🔗 useVisualEffects B4: Disconnecting B3 Lighting Bridge...');
-      send({ type: 'BRIDGE.DISCONNECT' });
-    },
-
-    syncWithLighting: (lightingData?: any) => {
-      console.log('🔄 useVisualEffects B4: Syncing with B3 Lighting...');
-      send({ type: 'BRIDGE.SYNC', lightingData });
-    },
-
-    // Presets B4
-    applyPreset: (presetName: string) => {
-      console.log(`🌍 useVisualEffects B4: Applying environment preset ${presetName}...`);
-      send({ type: 'HDR.LOAD', path: `/assets/hdri/${presetName}.hdr` }); // Exemple
-    },
-
-    // Cache B4
-    cache: {
-      preload: (paths: string[]) => {
-        console.log(`🌍 useVisualEffects B4: Preloading ${paths.length} HDR maps...`);
-        send({ type: 'CACHE.PRELOAD', paths });
-      },
-      clear: () => {
-        console.log('🧹 useVisualEffects B4: Clearing HDR cache...');
-        send({ type: 'CACHE.CLEAR' });
-      },
-      optimize: () => {
-        console.log('⚡ useVisualEffects B4: Optimizing HDR cache...');
-        send({ type: 'CACHE.OPTIMIZE' });
-      }
-    },
-
-    // État B4
-    isReady: context.environment.systemState.ready,
-    isLoading: context.environment.systemState.loading,
-    hasError: !!context.environment.systemState.error,
-    currentHDR: context.environment.hdr.currentMap,
-    quality: context.environment.quality.current,
-    bridgeConnected: context.environment.lightingBridge.connected,
-
-    // Stats cache B4
-    cacheStats: {
-      size: context.environment.cache.hdrMaps.size,
-      memoryUsage: context.environment.cache.memoryUsage,
-      hitRate: context.environment.performance.cacheHitRate
-    }
-  }), [send, context.environment, state.value]);
+    isReady: typeof state.value === 'object' && state.value.environment === 'ready'
+  }), [send, state.value]);
 
   // ====================================
   // CONTRÔLES SECURITY
@@ -253,55 +156,6 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     currentPreset: context.security.currentPreset,
     isTransitioning: context.security.isTransitioning
   }), [send, context.security.currentPreset, context.security.isTransitioning]);
-
-  // ====================================
-  // CONTRÔLES LIGHTING (B3)
-  // ====================================
-
-  const lightingControls = useMemo(() => ({
-    enableBase: () => {
-      console.log('🔦 useVisualEffects: Enabling base lighting...');
-      send({ type: 'LIGHTING.ENABLE_BASE' });
-    },
-
-    disableBase: () => {
-      console.log('🔦 useVisualEffects: Disabling base lighting...');
-      send({ type: 'LIGHTING.DISABLE_BASE' });
-    },
-
-    applyPreset: (preset: LightingPreset) => {
-      console.log(`🔦 useVisualEffects: Applying lighting preset ${preset}...`);
-      send({ type: 'LIGHTING.APPLY_PRESET', preset });
-    },
-
-    updateIntensity: (ambient: number, directional: number) => {
-      console.log(`🔦 useVisualEffects: Updating lighting intensity (${ambient}, ${directional})...`);
-      send({ type: 'LIGHTING.UPDATE_INTENSITY', ambient, directional });
-    },
-
-    enableAdvanced: () => {
-      console.log('🔦 useVisualEffects: Enabling advanced lighting...');
-      send({ type: 'LIGHTING.ENABLE_ADVANCED' });
-    },
-
-    enableArea: () => {
-      console.log('🔦 useVisualEffects: Enabling area lights...');
-      send({ type: 'LIGHTING.ENABLE_AREA' });
-    },
-
-    enableProbes: () => {
-      console.log('🔦 useVisualEffects: Enabling light probes...');
-      send({ type: 'LIGHTING.ENABLE_PROBES' });
-    },
-
-    enableHDRBoost: () => {
-      console.log('🔦 useVisualEffects: Enabling HDR boost...');
-      send({ type: 'LIGHTING.ENABLE_HDR_BOOST' });
-    },
-
-    currentPreset: context.lighting.currentPreset,
-    isActive: state.matches({ lighting: 'active' }) || state.matches({ lighting: 'partial' })
-  }), [send, context.lighting.currentPreset, state]);
 
   // ====================================
   // GESTION OBJETS
@@ -359,29 +213,6 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
       send({ type: 'SYSTEM.INIT', renderer, scene, camera });
     }
   }, [autoInit, renderer, scene, camera, send]);
-
-  // ✅ NOUVEAU: Initialisation Bridge B3 ↔ B4
-  const bridgeInitializedRef = useRef(false);
-  useEffect(() => {
-    if (!bridgeInitializedRef.current && context.environment.systemState.ready && context.lighting.currentPreset) {
-      console.log('🌉 Initializing B3 ↔ B4 Bridge...');
-
-      const sendB3Event = (event: any) => send(event);
-      const sendB4Event = (event: any) => send(event);
-
-      initializeB3B4Bridge(context, sendB3Event, sendB4Event)
-        .then(() => {
-          console.log('🌉 B3 ↔ B4 Bridge initialized successfully');
-          bridgeInitializedRef.current = true;
-
-          // Synchronisation initiale
-          send({ type: 'BRIDGE.SYNC', lightingData: context.lighting });
-        })
-        .catch((error) => {
-          console.error('🌉 Failed to initialize B3 ↔ B4 Bridge:', error);
-        });
-    }
-  }, [context.environment.systemState.ready, context.lighting.currentPreset, context, send]);
 
   // Callback de changement d'état (avec détection de changement réel)
   const prevStateRef = useRef<any>(null);
@@ -447,8 +278,7 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
   // RETURN HOOK
   // ====================================
 
-  // Mémoriser le retour pour éviter les re-renders constants
-  return useMemo(() => ({
+  return {
     // État et contexte
     state,
     context,
@@ -459,24 +289,12 @@ export const useVisualEffects = (options: UseVisualEffectsOptions = {}): VisualE
     pbr: pbrControls,
     environment: environmentControls,
     security: securityControls,
-    lighting: lightingControls,
     objects: objectsControls,
 
     // Performance et utilitaires
     performance: context.performance,
     dispose
-  }), [
-    state,
-    context,
-    send,
-    bloomControls,
-    pbrControls,
-    environmentControls,
-    securityControls,
-    lightingControls,
-    objectsControls,
-    dispose
-  ]);
+  };
 };
 
 export default useVisualEffects;

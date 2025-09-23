@@ -10,10 +10,6 @@ import type {
   BloomGlobalConfig,
   PBRGlobalConfig
 } from './types';
-import { LightingPreset, DEFAULT_PERFORMANCE_CONFIG, DEFAULT_MIGRATION_STATE, MigrationLevel } from '../lighting/types';
-import { environmentMachine } from '../environment/environmentMachine';
-import * as actions from './actions';
-import * as services from './services';
 
 // ============================================
 // CONTEXTE INITIAL
@@ -68,68 +64,13 @@ const initialContext: VisualEffectsContext = {
     }
   },
 
-  // ✅ B4 Environment (contexte B4 intégré)
+  // Environment
   environment: {
-    // Configuration HDR
-    hdr: {
-      currentMap: null,
-      intensity: 1.0,
-      rotation: 0,
-      background: false,
-      environmentIntensity: 1.0,
-      format: 'hdr'
-    },
-    // Bridge vers B3 Lighting
-    lightingBridge: {
-      connected: false,
-      lightingIntensity: 1.0,
-      ambientContribution: 0.8,
-      directionalShadows: true,
-      hdrBoost: false,
-      syncEnabled: false
-    },
-    // Gestion qualité
-    quality: {
-      current: 'auto',
-      lodLevel: 1,
-      adaptiveEnabled: true,
-      targetFPS: 60,
-      minFPS: 30,
-      maxFPS: 120,
-      adaptiveThreshold: 10
-    },
-    // Cache système
-    cache: {
-      hdrMaps: new Map(),
-      preloadQueue: [],
-      memoryUsage: 0,
-      maxCacheSize: 512,
-      compressionEnabled: true,
-      lruTracking: new Map()
-    },
-    // Performance monitoring
-    performance: {
-      hdrLoadTime: 0,
-      renderTime: 0,
-      memoryPressure: 0,
-      adaptiveHistory: [],
-      cacheHitRate: 0,
-      qualityAdjustments: 0
-    },
-    // État système
-    systemState: {
-      loading: false,
-      error: null,
-      ready: false,
-      lastUpdate: 0
-    },
-    // Intégration Three.js
-    threeJS: {
-      renderer: null,
-      scene: null,
-      pmremGenerator: null,
-      currentEnvironment: null
-    }
+    hdrPath: null,
+    envMap: null,
+    pmremGenerator: null,
+    intensity: 1.0,
+    background: false
   },
 
   // Security
@@ -168,71 +109,6 @@ const initialContext: VisualEffectsContext = {
         pbrPreset: { metalness: 0.5, roughness: 0.5 }
       }
     }
-  },
-
-  // ✅ NOUVEAU: Lighting (B3)
-  lighting: {
-    // 5 sous-systèmes parallèles
-    baseLighting: {
-      enabled: false,
-      ambientIntensity: 0.4,
-      directionalIntensity: 1.0,
-      shadowsEnabled: false
-    },
-    advancedLighting: {
-      enabled: false,
-      spotLights: { count: 0, intensity: 1.0 },
-      directionalLights: { count: 0, intensity: 1.0 }
-    },
-    areaLights: {
-      enabled: false,
-      lights: []
-    },
-    lightProbes: {
-      enabled: false,
-      intensity: 1.0,
-      environmentSync: false,
-      lastUpdateTime: 0
-    },
-    hdrBoost: {
-      enabled: false,
-      multiplier: 1.0,
-      metallicEnhancement: false,
-      toneMapping: 'ACESFilmic'
-    },
-
-    // Lazy loading
-    lazySubsystems: {
-      pointLights: {
-        initialized: false,
-        loading: false,
-        config: { maxLights: 100 }
-      },
-      shadowMaps: {
-        initialized: false,
-        loading: false,
-        config: { maxLights: 50, resolution: 1024 }
-      }
-    },
-
-    // Performance monitoring (consensus)
-    performance: {
-      frameTime: 0,
-      avgFrameTime: 0,
-      maxFrameTime: 0,
-      fps: 60,
-      batchEfficiency: 1.0,
-      fallbackCount: 0,
-      adaptiveThrottling: false
-    },
-    performanceConfig: DEFAULT_PERFORMANCE_CONFIG,
-
-    // Migration state (Claude IA)
-    migrationState: { ...DEFAULT_MIGRATION_STATE, level: MigrationLevel.OFF },
-
-    // Current state
-    currentPreset: LightingPreset.DEFAULT,
-    batchQueue: []
   },
 
   // Systèmes externes
@@ -420,123 +296,89 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
     },
 
     // ====================================
-    // RÉGION B4 ENVIRONMENT (6ème région complète)
+    // RÉGION ENVIRONMENT
     // ====================================
     environment: {
-      invoke: {
-        id: 'b4-environment-machine',
-        src: environmentMachine,
-        data: (context: VisualEffectsContext) => ({
-          // Transmission du contexte B4 Environment complet
-          ...context.environment,
-          // Injection des objets Three.js du contexte parent
-          threeJS: {
-            ...context.environment.threeJS,
-            renderer: context.renderer,
-            scene: context.scene
-          }
-        })
-      },
-      // Gestion des événements B4 Environment
-      on: {
-        // Événements HDR (conversion legacy ENV.* -> HDR.*)
-        'ENV.LOAD_HDR': {
-          actions: (context, event) => {
-            console.log('🌍 [Legacy] ENV.LOAD_HDR converti vers HDR.LOAD pour B4');
-            // Forward vers la machine B4 via HDR.LOAD
+      initial: 'unloaded',
+      states: {
+        unloaded: {
+          on: {
+            'ENV.LOAD_HDR': {
+              target: 'loading',
+              actions: assign({
+                environment: (ctx, event) => ({
+                  ...ctx.environment,
+                  hdrPath: event.path
+                })
+              })
+            }
           }
         },
 
-        // Événements HDR natifs B4
-        'HDR.LOAD': {
-          actions: (context, event) => {
-            console.log('🌍 HDR.LOAD transmis à B4 Environment');
-          }
-        },
-        'HDR.UNLOAD': {
-          actions: (context, event) => {
-            console.log('🌍 HDR.UNLOAD transmis à B4 Environment');
-          }
-        },
-        'HDR.SET_INTENSITY': {
-          actions: (context, event) => {
-            console.log('🌍 HDR.SET_INTENSITY transmis à B4 Environment');
-          }
-        },
-        'HDR.SET_ROTATION': {
-          actions: (context, event) => {
-            console.log('🌍 HDR.SET_ROTATION transmis à B4 Environment');
-          }
-        },
-        'HDR.TOGGLE_BACKGROUND': {
-          actions: (context, event) => {
-            console.log('🌍 HDR.TOGGLE_BACKGROUND transmis à B4 Environment');
+        loading: {
+          invoke: {
+            id: 'loadHDRService',
+            src: 'loadHDREnvironment',
+            onDone: {
+              target: 'processing',
+              actions: 'storeHDRTexture'
+            },
+            onError: {
+              target: 'error',
+              actions: 'logEnvironmentError'
+            }
           }
         },
 
-        // Événements Quality B4
-        'QUALITY.SET_LEVEL': {
-          actions: (context, event) => {
-            console.log('🌍 QUALITY.SET_LEVEL transmis à B4 Environment');
-          }
-        },
-        'QUALITY.ENABLE_ADAPTIVE': {
-          actions: (context, event) => {
-            console.log('🌍 QUALITY.ENABLE_ADAPTIVE transmis à B4 Environment');
-          }
-        },
-        'QUALITY.DISABLE_ADAPTIVE': {
-          actions: (context, event) => {
-            console.log('🌍 QUALITY.DISABLE_ADAPTIVE transmis à B4 Environment');
-          }
-        },
-        'QUALITY.AUTO_ADJUST': {
-          actions: (context, event) => {
-            console.log('🌍 QUALITY.AUTO_ADJUST transmis à B4 Environment');
+        processing: {
+          invoke: {
+            id: 'processPMREMService',
+            src: 'generatePMREM',
+            onDone: {
+              target: 'ready',
+              actions: 'storeEnvMap'
+            },
+            onError: {
+              target: 'error',
+              actions: 'logEnvironmentError'
+            }
           }
         },
 
-        // Événements Bridge B3 ↔ B4
-        'BRIDGE.CONNECT': {
-          actions: (context, event) => {
-            console.log('🔗 BRIDGE.CONNECT transmis à B4 Environment');
-          }
-        },
-        'BRIDGE.DISCONNECT': {
-          actions: (context, event) => {
-            console.log('🔗 BRIDGE.DISCONNECT transmis à B4 Environment');
-          }
-        },
-        'BRIDGE.SYNC': {
-          actions: (context, event) => {
-            console.log('🔄 BRIDGE.SYNC transmis à B4 Environment');
-          }
-        },
-        'BRIDGE.UPDATE_CONTRIBUTION': {
-          actions: (context, event) => {
-            console.log('🔗 BRIDGE.UPDATE_CONTRIBUTION transmis à B4 Environment');
+        ready: {
+          on: {
+            'ENV.SET_INTENSITY': {
+              actions: assign({
+                environment: (ctx, event) => ({
+                  ...ctx.environment,
+                  intensity: event.intensity
+                })
+              })
+            },
+            'ENV.TOGGLE_BACKGROUND': {
+              actions: assign({
+                environment: (ctx) => ({
+                  ...ctx.environment,
+                  background: !ctx.environment.background
+                })
+              })
+            },
+            'ENV.LOAD_HDR': {
+              target: 'loading',
+              actions: 'disposeCurrentEnvironment'
+            },
+            'ENV.DISPOSE': {
+              target: 'unloaded',
+              actions: 'disposeCurrentEnvironment'
+            }
           }
         },
 
-        // Événements Cache B4
-        'CACHE.PRELOAD': {
-          actions: (context, event) => {
-            console.log('💾 CACHE.PRELOAD transmis à B4 Environment');
-          }
-        },
-        'CACHE.CLEAR': {
-          actions: (context, event) => {
-            console.log('🧹 CACHE.CLEAR transmis à B4 Environment');
-          }
-        },
-        'CACHE.OPTIMIZE': {
-          actions: (context, event) => {
-            console.log('⚡ CACHE.OPTIMIZE transmis à B4 Environment');
-          }
-        },
-        'CACHE.SET_SIZE': {
-          actions: (context, event) => {
-            console.log('💾 CACHE.SET_SIZE transmis à B4 Environment');
+        error: {
+          on: {
+            'ENV.LOAD_HDR': {
+              target: 'loading'
+            }
           }
         }
       }
@@ -590,99 +432,6 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
           }
         }
       }
-    },
-
-    // ====================================
-    // RÉGION LIGHTING (B3)
-    // ====================================
-    lighting: {
-      initial: 'uninitialized',
-      states: {
-        uninitialized: {
-          on: {
-            'LIGHTING.ENABLE_BASE': {
-              target: 'initializing',
-              actions: 'logLightingInit'
-            }
-          }
-        },
-
-        initializing: {
-          invoke: {
-            id: 'initLightingService',
-            src: 'initBaseLighting',
-            onDone: {
-              target: 'partial',
-              actions: assign({
-                lighting: (ctx) => ({
-                  ...ctx.lighting,
-                  baseLighting: { ...ctx.lighting.baseLighting, enabled: true }
-                })
-              })
-            },
-            onError: {
-              target: 'error',
-              actions: 'logLightingError'
-            }
-          }
-        },
-
-        partial: {
-          on: {
-            'LIGHTING.APPLY_PRESET': {
-              actions: 'applyLightingPreset'
-            },
-            'LIGHTING.UPDATE_INTENSITY': {
-              actions: 'updateLightingIntensity'
-            },
-            'LIGHTING.ENABLE_ADVANCED': {
-              target: 'active',
-              actions: 'enableAdvancedLighting'
-            },
-            'LIGHTING.DISABLE_BASE': {
-              target: 'uninitialized',
-              actions: assign({
-                lighting: (ctx) => ({
-                  ...ctx.lighting,
-                  baseLighting: { ...ctx.lighting.baseLighting, enabled: false }
-                })
-              })
-            }
-          }
-        },
-
-        active: {
-          on: {
-            'LIGHTING.APPLY_PRESET': {
-              actions: 'applyLightingPreset'
-            },
-            'LIGHTING.UPDATE_INTENSITY': {
-              actions: 'updateLightingIntensity'
-            },
-            'LIGHTING.ENABLE_AREA': {
-              actions: 'enableAreaLights'
-            },
-            'LIGHTING.ENABLE_PROBES': {
-              actions: 'enableLightProbes'
-            },
-            'LIGHTING.ENABLE_HDR_BOOST': {
-              actions: 'enableHDRBoost'
-            },
-            'LIGHTING.DISABLE_ADVANCED': {
-              target: 'partial',
-              actions: 'disableAdvancedLighting'
-            }
-          }
-        },
-
-        error: {
-          on: {
-            'LIGHTING.ENABLE_BASE': {
-              target: 'initializing'
-            }
-          }
-        }
-      }
     }
   },
 
@@ -724,20 +473,6 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
       actions: 'logSystemError'
     }
   }
-}, {
-  actions: {
-    logLightingInit: actions.logLightingInit,
-    logLightingError: actions.logLightingError,
-    applyLightingPreset: actions.applyLightingPreset,
-    updateLightingIntensity: actions.updateLightingIntensity,
-    enableAdvancedLighting: actions.enableAdvancedLighting,
-    enableAreaLights: actions.enableAreaLights,
-    enableLightProbes: actions.enableLightProbes,
-    enableHDRBoost: actions.enableHDRBoost
-  },
-  services: {
-    initBaseLighting: services.initBaseLighting
-  }
 });
 
 // ============================================
@@ -757,7 +492,7 @@ export const createVisualEffectsContext = (
 // Helper pour vérifier l'état d'une région
 export const isRegionInState = (
   state: any,
-  region: 'bloom' | 'pbr' | 'environment' | 'security' | 'lighting',
+  region: 'bloom' | 'pbr' | 'environment' | 'security',
   expectedState: string
 ): boolean => {
   return state.matches({ [region]: expectedState });

@@ -2,12 +2,6 @@
 // Types TypeScript pour la machine XState des effets visuels
 
 import * as THREE from 'three';
-import type { LegacySystemsBridge } from '../../bridges/LegacySystemsBridge';
-import type { LightingContext, LightingPreset } from '../lighting/types';
-import type {
-  EnvironmentContext as B4EnvironmentContext,
-  EnvironmentEvent as B4EnvironmentEvent
-} from '../environment/types';
 
 // ============================================
 // TYPES PARTAGÉS
@@ -84,8 +78,13 @@ export interface PBRContext {
 // CONTEXTE ENVIRONMENT
 // ============================================
 
-// ✅ B4 Environment Context (importé depuis environment/types)
-// L'interface EnvironmentContext est maintenant la version B4 complète
+export interface EnvironmentContext {
+  hdrPath: string | null;
+  envMap: THREE.Texture | null;
+  pmremGenerator: THREE.PMREMGenerator | null;
+  intensity: number;
+  background: boolean;
+}
 
 // ============================================
 // CONTEXTE SECURITY
@@ -115,19 +114,13 @@ export interface VisualEffectsContext {
   // Contextes des régions
   bloom: BloomContext;
   pbr: PBRContext;
-  environment: B4EnvironmentContext;
+  environment: EnvironmentContext;
   security: SecurityContext;
-
-  // ✅ NOUVEAU: Région lighting (B3)
-  lighting: LightingContext;
 
   // Systèmes externes
   renderer: THREE.WebGLRenderer | null;
   scene: THREE.Scene | null;
   camera: THREE.Camera | null;
-
-  // ✅ AJOUT: Bridge pour connexion legacy systems
-  legacyBridge?: LegacySystemsBridge;
 
   // Performance
   performance: {
@@ -156,26 +149,18 @@ export type PBREvent =
   | { type: 'PBR.UPDATE_GLOBAL'; metalness?: number; roughness?: number; envMapIntensity?: number }
   | { type: 'PBR.UPDATE_GROUP'; group: VisualGroupType; metalness?: number; roughness?: number };
 
-// 🌍 Événements Environment (B4 - importés depuis environment/types)
-// Les événements Environment utilisent maintenant la définition B4 complète
+// 🌍 Événements Environment
+export type EnvironmentEvent =
+  | { type: 'ENV.LOAD_HDR'; path: string }
+  | { type: 'ENV.SET_INTENSITY'; intensity: number }
+  | { type: 'ENV.TOGGLE_BACKGROUND' }
+  | { type: 'ENV.DISPOSE' };
 
 // 🔒 Événements Security
 export type SecurityEvent =
   | { type: 'SECURITY.SET_PRESET'; preset: SecurityPreset }
   | { type: 'SECURITY.TRANSITION_START' }
   | { type: 'SECURITY.TRANSITION_COMPLETE' };
-
-// 🔦 Événements Lighting (B3)
-export type LightingEvent =
-  | { type: 'LIGHTING.ENABLE_BASE' }
-  | { type: 'LIGHTING.DISABLE_BASE' }
-  | { type: 'LIGHTING.APPLY_PRESET'; preset: LightingPreset }
-  | { type: 'LIGHTING.UPDATE_INTENSITY'; ambient: number; directional: number }
-  | { type: 'LIGHTING.ENABLE_ADVANCED' }
-  | { type: 'LIGHTING.DISABLE_ADVANCED' }
-  | { type: 'LIGHTING.ENABLE_AREA' }
-  | { type: 'LIGHTING.ENABLE_PROBES' }
-  | { type: 'LIGHTING.ENABLE_HDR_BOOST' };
 
 // 📦 Événements Objects
 export type ObjectEvent =
@@ -197,9 +182,8 @@ export type SystemEvent =
 export type VisualEffectsEvent =
   | BloomEvent
   | PBREvent
-  | B4EnvironmentEvent
+  | EnvironmentEvent
   | SecurityEvent
-  | LightingEvent
   | ObjectEvent
   | SystemEvent;
 
@@ -213,7 +197,6 @@ export interface VisualEffectsStates {
   pbr: 'idle' | 'initializing' | 'active' | 'updating' | 'error';
   environment: 'unloaded' | 'loading' | 'processing' | 'ready' | 'error';
   security: 'normal' | 'transitioning' | 'applied';
-  lighting: 'uninitialized' | 'initializing' | 'partial' | 'active' | 'error';
 }
 
 // ============================================
@@ -244,21 +227,12 @@ export interface VisualEffectsHook {
     isActive: boolean;
   };
 
-  // Contrôles Environment (B4)
+  // Contrôles Environment
   environment: {
-    loadHDR: (path: string, config?: any) => void;
-    unloadHDR: () => void;
+    loadHDR: (path: string) => void;
     setIntensity: (intensity: number) => void;
-    setRotation: (rotation: number) => void;
     toggleBackground: () => void;
-    setQualityLevel: (level: 'auto' | 'high' | 'medium' | 'low') => void;
-    enableAdaptiveQuality: () => void;
-    connectBridge: () => void;
-    disconnectBridge: () => void;
-    applyPreset: (presetName: string) => void;
     isReady: boolean;
-    isLoading: boolean;
-    hasError: boolean;
   };
 
   // Contrôles Security
@@ -266,20 +240,6 @@ export interface VisualEffectsHook {
     setPreset: (preset: SecurityPreset) => void;
     currentPreset: SecurityPreset | null;
     isTransitioning: boolean;
-  };
-
-  // ✅ NOUVEAU: Contrôles Lighting (B3)
-  lighting: {
-    enableBase: () => void;
-    disableBase: () => void;
-    applyPreset: (preset: LightingPreset) => void;
-    updateIntensity: (ambient: number, directional: number) => void;
-    enableAdvanced: () => void;
-    enableArea: () => void;
-    enableProbes: () => void;
-    enableHDRBoost: () => void;
-    currentPreset: LightingPreset | null;
-    isActive: boolean;
   };
 
   // Gestion objets
@@ -334,18 +294,4 @@ export interface VisualEffectsConfig {
   enablePerformanceMonitoring: boolean;
   autoDetectObjects: boolean;
   debugMode: boolean;
-}
-
-// ============================================
-// OPTIONS POUR HOOK
-// ============================================
-
-export interface VisualEffectsOptions {
-  // Configuration
-  initialContext?: Partial<VisualEffectsContext>;
-  enablePerformanceMonitoring?: boolean;
-  debugMode?: boolean;
-
-  // ✅ AJOUT: Injection optionnelle du bridge
-  legacyBridge?: LegacySystemsBridge;
 }
