@@ -167,8 +167,8 @@ export const applyGlobalPBR = async (context: VisualEffectsContext) => {
           material.envMapIntensity = envMapIntensity;
 
           // Appliquer l'environment map si disponible
-          if (context.environment.envMap) {
-            material.envMap = context.environment.envMap;
+          if (context.environment.threeJS.envMap) {
+            material.envMap = context.environment.threeJS.envMap;
           }
 
           material.needsUpdate = true;
@@ -388,11 +388,11 @@ export const dispose = async (context: VisualEffectsContext) => {
   console.log('🧹 Disposing all resources...');
 
   // Nettoyer l'environnement
-  if (context.environment.envMap) {
-    context.environment.envMap.dispose();
+  if (context.environment.threeJS.envMap) {
+    context.environment.threeJS.envMap.dispose();
   }
-  if (context.environment.pmremGenerator) {
-    context.environment.pmremGenerator.dispose();
+  if (context.environment.threeJS.pmremGenerator) {
+    context.environment.threeJS.pmremGenerator.dispose();
   }
 
   // Nettoyer les matériaux des objets

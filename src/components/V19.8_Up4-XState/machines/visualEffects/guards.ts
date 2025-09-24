@@ -125,7 +125,7 @@ export const canLoadHDR = (ctx: VisualEffectsContext, event: any): boolean => {
 };
 
 export const isEnvironmentReady = (ctx: VisualEffectsContext): boolean => {
-  return ctx.environment.envMap !== null && ctx.environment.pmremGenerator !== null;
+  return ctx.environment.threeJS.envMap !== null && ctx.environment.threeJS.pmremGenerator !== null;
 };
 
 // ============================================

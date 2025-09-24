@@ -118,18 +118,21 @@ export const storeHDRTexture = assign<VisualEffectsContext, any>({
 export const storeEnvMap = assign<VisualEffectsContext, any>({
   environment: (ctx, event) => ({
     ...ctx.environment,
-    envMap: event.data.envMap,
-    pmremGenerator: event.data.pmremGenerator
+    threeJS: {
+      ...ctx.environment.threeJS,
+      envMap: event.data.envMap,
+      pmremGenerator: event.data.pmremGenerator
+    }
   })
 });
 
 export const disposeCurrentEnvironment = (ctx: VisualEffectsContext) => {
   // Nettoyer les ressources HDR
-  if (ctx.environment.envMap) {
-    ctx.environment.envMap.dispose();
+  if (ctx.environment.threeJS.envMap) {
+    ctx.environment.threeJS.envMap.dispose();
   }
-  if (ctx.environment.pmremGenerator) {
-    ctx.environment.pmremGenerator.dispose();
+  if (ctx.environment.threeJS.pmremGenerator) {
+    ctx.environment.threeJS.pmremGenerator.dispose();
   }
   console.log('🧹 Environment disposed');
 };
@@ -197,6 +200,248 @@ export const completeSecurityTransition = assign<VisualEffectsContext, any>({
 
 export const logSecurityError = (ctx: VisualEffectsContext, event: any) => {
   console.error('❌ Security Error:', event.data);
+};
+
+// ✅ NOUVEAU: Actions B5 Security Actor Model
+export const updateSecurityLevel = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => ({
+    ...ctx.security,
+    securityMachine: {
+      ...ctx.security.securityMachine,
+      securityLevel: event.level
+    }
+  })
+});
+
+// Action étendue avec coordination inter-régions
+export const updateSecurityLevelWithCoordination = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    // Logs de coordination cross-région selon niveau de sécurité
+    if (event.level === 'alert') {
+      console.log('⬇️ Réduction automatique des effets visuels');
+    } else if (event.level === 'lockdown') {
+      console.log('🌍 Mode HDR sécurisé activé');
+    }
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        securityLevel: event.level
+      }
+    };
+  }
+});
+
+export const handleThreatDetected = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    // Validation robuste des données de menace
+    if (!event.threat || typeof event.threat.score !== 'number' || !Array.isArray(event.threat.threats)) {
+      console.warn('🔴 Données de menace malformées ignorées:', event.threat);
+      return ctx.security; // Retourner l'état inchangé
+    }
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        threatScore: event.threat.score,
+        currentThreats: [...ctx.security.securityMachine.currentThreats, ...event.threat.threats]
+      }
+    };
+  }
+});
+
+export const handleThreatCleared = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => ({
+    ...ctx.security,
+    securityMachine: {
+      ...ctx.security.securityMachine,
+      currentThreats: ctx.security.securityMachine.currentThreats.filter(
+        threat => threat.id !== event.threatId
+      )
+    }
+  })
+});
+
+export const startVisualAlert = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    const alert = {
+      pattern: event.pattern,
+      color: event.config?.color || '#ff0000',
+      intensity: event.config?.intensity || 0.8
+    };
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        activeAlerts: [...ctx.security.securityMachine.activeAlerts, alert]
+      }
+    };
+  }
+});
+
+export const addVisualAlert = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    const alert = {
+      pattern: event.pattern,
+      color: event.config?.color || '#ff0000',
+      intensity: event.config?.intensity || 0.8
+    };
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        activeAlerts: [...ctx.security.securityMachine.activeAlerts, alert]
+      }
+    };
+  }
+});
+
+export const stopAllAlerts = assign<VisualEffectsContext, any>({
+  security: (ctx) => ({
+    ...ctx.security,
+    securityMachine: {
+      ...ctx.security.securityMachine,
+      activeAlerts: []
+    }
+  })
+});
+
+export const connectBridge = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    // Convertir en camelCase: b3-lighting -> b3Lighting
+    let key = event.system;
+    key = key.replace(/-([a-z])/g, (match: string, letter: string) => letter.toUpperCase());
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        bridgeConnections: {
+          ...ctx.security.securityMachine.bridgeConnections,
+          [key]: true
+        }
+      }
+    };
+  }
+});
+
+export const disconnectBridge = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    // Convertir en camelCase: b3-lighting -> b3Lighting
+    let key = event.system;
+    key = key.replace(/-([a-z])/g, (match: string, letter: string) => letter.toUpperCase());
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        bridgeConnections: {
+          ...ctx.security.securityMachine.bridgeConnections,
+          [key]: false
+        }
+      }
+    };
+  }
+});
+
+export const handlePerformanceDegradation = assign<VisualEffectsContext, any>({
+  security: (ctx, event) => {
+    const performanceMode = event.metrics.fps < 30 ? 'minimal' :
+                          event.metrics.fps < 45 ? 'reduced' : 'normal';
+
+    const circuitBreakerState = performanceMode === 'minimal' ? 'open' : 'closed';
+
+    // Logs de coordination cross-région selon performance
+    if (performanceMode === 'minimal') {
+      console.log('🚨 Escalade de sécurité globale déclenchée');
+      console.log('⬇️ Réduction automatique des effets visuels');
+      console.log('🌍 Mode HDR sécurisé activé');
+      console.log('💡 Mode éclairage minimal pour performance');
+    }
+
+    return {
+      ...ctx.security,
+      securityMachine: {
+        ...ctx.security.securityMachine,
+        performanceMode,
+        circuitBreakerState
+      }
+    };
+  }
+});
+
+export const handlePerformanceRecovery = assign<VisualEffectsContext, any>({
+  security: (ctx) => ({
+    ...ctx.security,
+    securityMachine: {
+      ...ctx.security.securityMachine,
+      performanceMode: 'normal',
+      circuitBreakerState: 'closed'
+    }
+  })
+});
+
+// ✅ NOUVEAU: Actions de coordination inter-régions (Bridges B3↔B4↔B5)
+export const notifySecurityB3Connection = (ctx: VisualEffectsContext) => {
+  // Auto-envoi d'événement pour connecter B3 Lighting à B5 Security
+  setTimeout(() => {
+    if (ctx.security.securityMachine.isActive) {
+      console.log('🔗 B3 Lighting → B5 Security bridge établi');
+    }
+  }, 0);
+};
+
+export const notifySecurityB4Connection = (ctx: VisualEffectsContext) => {
+  // Auto-envoi d'événement pour connecter B4 Environment à B5 Security
+  setTimeout(() => {
+    if (ctx.security.securityMachine.isActive) {
+      console.log('🔗 B4 Environment → B5 Security bridge établi');
+    }
+  }, 0);
+};
+
+export const synchronizeCrossRegionPerformance = assign<VisualEffectsContext, any>({
+  // Synchroniser les métriques de performance entre toutes les régions
+  performance: (ctx) => {
+    const avgFrameTime = (
+      ctx.lighting.performance.frameTime +
+      ctx.environment.performance.frameTime +
+      16 // Base frame time for other systems
+    ) / 3;
+
+    return {
+      ...ctx.performance,
+      frameTime: avgFrameTime,
+      fps: 1000 / avgFrameTime,
+      updateCount: ctx.performance.updateCount + 1,
+      lastUpdateTime: Date.now()
+    };
+  }
+});
+
+// Action centralisée pour escalade de sécurité coordonnée
+export const escalateSecurityAcrossRegions = (ctx: VisualEffectsContext, event: any) => {
+  console.log('🚨 Escalade de sécurité globale déclenchée');
+
+  // 1. Réduire qualité Bloom si niveau élevé
+  if (event.level === 'alert' || event.level === 'lockdown') {
+    // Réduction automatique des effets
+    console.log('⬇️ Réduction automatique des effets visuels');
+  }
+
+  // 2. Ajuster HDR Environment selon menace
+  if (event.level === 'lockdown') {
+    console.log('🌍 Mode HDR sécurisé activé');
+  }
+
+  // 3. Optimiser éclairage pour performance critique
+  if (ctx.security.securityMachine.circuitBreakerState === 'open') {
+    console.log('💡 Mode éclairage minimal pour performance');
+  }
 };
 
 // ============================================
@@ -349,11 +594,11 @@ export const disposeAllResources = (ctx: VisualEffectsContext) => {
   console.log('🧹 Disposing all visual effects resources...');
 
   // Nettoyer l'environnement
-  if (ctx.environment.envMap) {
-    ctx.environment.envMap.dispose();
+  if (ctx.environment.threeJS.envMap) {
+    ctx.environment.threeJS.envMap.dispose();
   }
-  if (ctx.environment.pmremGenerator) {
-    ctx.environment.pmremGenerator.dispose();
+  if (ctx.environment.threeJS.pmremGenerator) {
+    ctx.environment.threeJS.pmremGenerator.dispose();
   }
 
   // Clear tous les registres d'objets

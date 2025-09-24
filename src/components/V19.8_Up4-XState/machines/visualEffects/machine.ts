@@ -111,7 +111,11 @@ const initialContext: VisualEffectsContext = {
     performance: {
       hdrLoadTime: 0,
       renderTime: 0,
+      frameTime: 16.67,
+      loadTime: 0,
+      fps: 60,
       memoryPressure: 0,
+      memoryUsage: 0,
       adaptiveHistory: [],
       cacheHitRate: 0,
       qualityAdjustments: 0
@@ -128,12 +132,14 @@ const initialContext: VisualEffectsContext = {
       renderer: null,
       scene: null,
       pmremGenerator: null,
-      currentEnvironment: null
+      currentEnvironment: null,
+      envMap: null
     }
   },
 
-  // Security
+  // ✅ B5 Security - Architecture Actor Model complète
   security: {
+    // Legacy compatibility
     currentPreset: null,
     isTransitioning: false,
     presets: {
@@ -167,6 +173,28 @@ const initialContext: VisualEffectsContext = {
         bloomPreset: { strength: 0.4 },
         pbrPreset: { metalness: 0.5, roughness: 0.5 }
       }
+    },
+
+    // ✅ NOUVEAU: B5 Security Actor Model intégré
+    securityMachine: {
+      isActive: false,
+      securityLevel: 'normal',
+      threatScore: 0,
+      currentThreats: [],
+
+      // Bridge connections
+      bridgeConnections: {
+        b3Lighting: false,
+        b4Environment: false,
+        visualEffects: true // Auto-connecté à VisualEffects
+      },
+
+      // Performance monitoring
+      circuitBreakerState: 'closed',
+      performanceMode: 'normal',
+
+      // Visual alerts
+      activeAlerts: []
     }
   },
 
@@ -360,7 +388,7 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
             src: 'initializePBR',
             onDone: {
               target: 'active',
-              actions: assign({
+              actions: assign<VisualEffectsContext, any>({
                 pbr: (ctx) => ({
                   ...ctx.pbr,
                   global: { ...ctx.pbr.global, enabled: true }
@@ -378,12 +406,7 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
           on: {
             'PBR.DISABLE': {
               target: 'idle',
-              actions: assign({
-                pbr: (ctx) => ({
-                  ...ctx.pbr,
-                  global: { ...ctx.pbr.global, enabled: false }
-                })
-              })
+              actions: 'updatePBRGlobal'
             },
             'PBR.UPDATE_GLOBAL': {
               target: 'updating',
@@ -543,17 +566,19 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
     },
 
     // ====================================
-    // RÉGION SECURITY
+    // RÉGION B5 SECURITY - Architecture Actor Model complète
     // ====================================
     security: {
-      initial: 'normal',
+      initial: 'inactive',
       states: {
+        // Legacy compatibility state
         normal: {
           on: {
             'SECURITY.SET_PRESET': {
               target: 'transitioning',
               actions: 'startSecurityTransition'
-            }
+            },
+            'B5_SECURITY.ACTIVATE': 'b5_active'
           }
         },
 
@@ -569,6 +594,20 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
               target: 'normal',
               actions: 'logSecurityError'
             }
+          },
+          on: {
+            'B5_SECURITY.ACTIVATE': {
+              target: 'b5_active',
+              actions: assign<VisualEffectsContext, any>({
+                security: (ctx) => ({
+                  ...ctx.security,
+                  securityMachine: {
+                    ...ctx.security.securityMachine,
+                    isActive: true
+                  }
+                })
+              })
+            }
           }
         },
 
@@ -580,12 +619,314 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
             },
             'SECURITY.TRANSITION_COMPLETE': {
               target: 'normal',
-              actions: assign({
+              actions: assign<VisualEffectsContext, any>({
                 security: (ctx) => ({
                   ...ctx.security,
                   isTransitioning: false
                 })
               })
+            },
+            'B5_SECURITY.ACTIVATE': 'b5_active'
+          }
+        },
+
+        // ✅ NOUVEAU: États B5 Security Actor Model
+        inactive: {
+          on: {
+            'B5_SECURITY.ACTIVATE': {
+              target: 'b5_active',
+              actions: assign<VisualEffectsContext, any>({
+                security: (ctx) => ({
+                  ...ctx.security,
+                  securityMachine: {
+                    ...ctx.security.securityMachine,
+                    isActive: true
+                  }
+                })
+              })
+            },
+            'SECURITY.SET_PRESET': {
+              target: 'transitioning',
+              actions: 'startSecurityTransition'
+            }
+          }
+        },
+
+        b5_active: {
+          type: 'parallel',
+          on: {
+            'B5_SECURITY.DEACTIVATE': {
+              target: 'inactive',
+              actions: assign<VisualEffectsContext, any>({
+                security: (ctx) => ({
+                  ...ctx.security,
+                  securityMachine: {
+                    ...ctx.security.securityMachine,
+                    isActive: false,
+                    securityLevel: 'normal',
+                    threatScore: 0,
+                    currentThreats: [],
+                    activeAlerts: []
+                  }
+                })
+              })
+            }
+          },
+
+          states: {
+            // Niveau de sécurité
+            securityLevel: {
+              initial: 'normal',
+              states: {
+                normal: {
+                  on: {
+                    'B5_SECURITY.SET_LEVEL': [
+                      {
+                        target: 'scanning',
+                        cond: (ctx, event) => event.level === 'scanning',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'alert',
+                        cond: (ctx, event) => event.level === 'alert',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'lockdown',
+                        cond: (ctx, event) => event.level === 'lockdown',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      }
+                    ],
+                    'B5_SECURITY.ESCALATE': {
+                      target: 'scanning',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'scanning'
+                          }
+                        })
+                      })
+                    }
+                  }
+                },
+                scanning: {
+                  on: {
+                    'B5_SECURITY.ESCALATE': {
+                      target: 'alert',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'alert'
+                          }
+                        })
+                      })
+                    },
+                    'B5_SECURITY.DEESCALATE': {
+                      target: 'normal',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'normal'
+                          }
+                        })
+                      })
+                    },
+                    'B5_SECURITY.SET_LEVEL': [
+                      {
+                        target: 'normal',
+                        cond: (ctx, event) => event.level === 'normal',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'alert',
+                        cond: (ctx, event) => event.level === 'alert',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'lockdown',
+                        cond: (ctx, event) => event.level === 'lockdown',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      }
+                    ]
+                  }
+                },
+                alert: {
+                  on: {
+                    'B5_SECURITY.ESCALATE': {
+                      target: 'lockdown',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'lockdown'
+                          }
+                        })
+                      })
+                    },
+                    'B5_SECURITY.DEESCALATE': {
+                      target: 'scanning',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'scanning'
+                          }
+                        })
+                      })
+                    },
+                    'B5_SECURITY.SET_LEVEL': [
+                      {
+                        target: 'normal',
+                        cond: (ctx, event) => event.level === 'normal',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'scanning',
+                        cond: (ctx, event) => event.level === 'scanning',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'lockdown',
+                        cond: (ctx, event) => event.level === 'lockdown',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      }
+                    ]
+                  }
+                },
+                lockdown: {
+                  on: {
+                    'B5_SECURITY.DEESCALATE': {
+                      target: 'alert',
+                      actions: assign<VisualEffectsContext, any>({
+                        security: (ctx) => ({
+                          ...ctx.security,
+                          securityMachine: {
+                            ...ctx.security.securityMachine,
+                            securityLevel: 'alert'
+                          }
+                        })
+                      })
+                    },
+                    'B5_SECURITY.SET_LEVEL': [
+                      {
+                        target: 'normal',
+                        cond: (ctx, event) => event.level === 'normal',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'scanning',
+                        cond: (ctx, event) => event.level === 'scanning',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      },
+                      {
+                        target: 'alert',
+                        cond: (ctx, event) => event.level === 'alert',
+                        actions: ['updateSecurityLevel', 'escalateSecurityAcrossRegions']
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+
+            // Gestion des menaces
+            threatManagement: {
+              initial: 'monitoring',
+              states: {
+                monitoring: {
+                  on: {
+                    'B5_SECURITY.THREAT_DETECTED': {
+                      actions: 'handleThreatDetected'
+                    },
+                    'B5_SECURITY.THREAT_CLEARED': {
+                      actions: 'handleThreatCleared'
+                    }
+                  }
+                }
+              }
+            },
+
+            // Gestion des alertes visuelles
+            alertsManagement: {
+              initial: 'idle',
+              states: {
+                idle: {
+                  on: {
+                    'B5_SECURITY.TRIGGER_ALERT': {
+                      target: 'alerting',
+                      actions: 'startVisualAlert'
+                    }
+                  }
+                },
+                alerting: {
+                  on: {
+                    'B5_SECURITY.STOP_ALERTS': {
+                      target: 'idle',
+                      actions: 'stopAllAlerts'
+                    },
+                    'B5_SECURITY.TRIGGER_ALERT': {
+                      actions: 'addVisualAlert'
+                    }
+                  }
+                }
+              }
+            },
+
+            // Gestion des bridges
+            bridgeManagement: {
+              initial: 'disconnected',
+              states: {
+                disconnected: {
+                  on: {
+                    'B5_SECURITY.BRIDGE_CONNECT': {
+                      target: 'connected',
+                      actions: 'connectBridge'
+                    }
+                  }
+                },
+                connected: {
+                  on: {
+                    'B5_SECURITY.BRIDGE_DISCONNECT': {
+                      target: 'disconnected',
+                      actions: 'disconnectBridge'
+                    },
+                    'B5_SECURITY.BRIDGE_CONNECT': {
+                      actions: 'connectBridge'
+                    }
+                  }
+                }
+              }
+            },
+
+            // Monitoring performance
+            performanceMonitoring: {
+              initial: 'normal',
+              states: {
+                normal: {
+                  on: {
+                    'B5_SECURITY.PERFORMANCE_DEGRADED': {
+                      target: 'degraded',
+                      actions: 'handlePerformanceDegradation'
+                    }
+                  }
+                },
+                degraded: {
+                  on: {
+                    'B5_SECURITY.PERFORMANCE_RECOVERED': {
+                      target: 'normal',
+                      actions: 'handlePerformanceRecovery'
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -602,7 +943,7 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
           on: {
             'LIGHTING.ENABLE_BASE': {
               target: 'initializing',
-              actions: 'logLightingInit'
+              actions: ['logLightingInit', 'notifySecurityB3Connection']
             }
           }
         },
@@ -613,7 +954,7 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
             src: 'initBaseLighting',
             onDone: {
               target: 'partial',
-              actions: assign({
+              actions: assign<VisualEffectsContext, any>({
                 lighting: (ctx) => ({
                   ...ctx.lighting,
                   baseLighting: { ...ctx.lighting.baseLighting, enabled: true }
@@ -641,7 +982,7 @@ export const visualEffectsMachine = createMachine<VisualEffectsContext, VisualEf
             },
             'LIGHTING.DISABLE_BASE': {
               target: 'uninitialized',
-              actions: assign({
+              actions: assign<VisualEffectsContext, any>({
                 lighting: (ctx) => ({
                   ...ctx.lighting,
                   baseLighting: { ...ctx.lighting.baseLighting, enabled: false }

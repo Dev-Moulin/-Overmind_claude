@@ -76,7 +76,11 @@ export interface EnvironmentCache {
 export interface EnvironmentPerformance {
   hdrLoadTime: number;
   renderTime: number;
+  frameTime: number;
+  loadTime: number;
+  fps: number;
   memoryPressure: number;
+  memoryUsage: number;
   adaptiveHistory: number[];
   cacheHitRate: number;
   qualityAdjustments: number;
@@ -119,6 +123,7 @@ export interface EnvironmentContext {
     scene: THREE.Scene | null;
     pmremGenerator: THREE.PMREMGenerator | null;
     currentEnvironment: THREE.Texture | null;
+    envMap: THREE.Texture | null;
   };
 }
 

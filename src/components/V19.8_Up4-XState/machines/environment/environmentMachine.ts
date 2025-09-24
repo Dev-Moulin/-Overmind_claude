@@ -62,7 +62,11 @@ const initialContext: EnvironmentContext = {
   performance: {
     hdrLoadTime: 0,
     renderTime: 0,
+    frameTime: 16.67,
+    loadTime: 0,
+    fps: 60,
     memoryPressure: 0,
+    memoryUsage: 0,
     adaptiveHistory: [],
     cacheHitRate: 0,
     qualityAdjustments: 0
@@ -81,7 +85,8 @@ const initialContext: EnvironmentContext = {
     renderer: null,
     scene: null,
     pmremGenerator: null,
-    currentEnvironment: null
+    currentEnvironment: null,
+    envMap: null
   }
 };
 

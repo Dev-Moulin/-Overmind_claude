@@ -9,8 +9,13 @@ export default {
     '!src/**/*.d.ts',
   ],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json'],
-  extensionsToTreatAsEsm: ['.js'],
-  globals: {
-    'jest': true
+  transform: {
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      useESM: true
+    }],
+    '^.+\\.(js|jsx)$': 'babel-jest'
+  },
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1'
   }
 };

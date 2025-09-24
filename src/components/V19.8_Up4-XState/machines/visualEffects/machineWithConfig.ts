@@ -54,6 +54,20 @@ export const visualEffectsMachineWithConfig = visualEffectsMachine.withConfig({
     completeSecurityTransition: actions.completeSecurityTransition,
     logSecurityError: actions.logSecurityError,
 
+    // Actions B5 Security Integration
+    updateSecurityLevel: actions.updateSecurityLevel,
+    handleThreatDetected: actions.handleThreatDetected,
+    handleThreatCleared: actions.handleThreatCleared,
+    startVisualAlert: actions.startVisualAlert,
+    addVisualAlert: actions.addVisualAlert,
+    stopAllAlerts: actions.stopAllAlerts,
+    connectBridge: actions.connectBridge,
+    disconnectBridge: actions.disconnectBridge,
+    handlePerformanceDegradation: actions.handlePerformanceDegradation,
+    handlePerformanceRecovery: actions.handlePerformanceRecovery,
+    escalateSecurityAcrossRegions: actions.escalateSecurityAcrossRegions,
+    notifySecurityB3Connection: actions.notifySecurityB3Connection,
+
     // Actions Objects
     registerObjects: actions.registerObjects,
     unregisterObjects: actions.unregisterObjects,

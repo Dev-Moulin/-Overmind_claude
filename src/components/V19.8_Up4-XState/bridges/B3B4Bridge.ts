@@ -4,7 +4,7 @@
  */
 
 import type { LightingContext, LightingEvent } from '../machines/lighting/types';
-import type { EnvironmentContext, EnvironmentEvent } from '../machines/environment/types';
+import type { EnvironmentContext, EnvironmentEvent } from '../machines/environment/environmentTypes';
 import type { VisualEffectsContext } from '../machines/visualEffects/types';
 
 // ====================================
@@ -339,7 +339,7 @@ export class B3B4Bridge {
         const lightingIntensity = syncData.hdrIntensity * this.config.environmentFeedback;
 
         this.sendToB3({
-          type: 'LIGHTING.UPDATE_INTENSITY',
+          type: 'UPDATE_BASE_INTENSITY',
           ambient: lightingIntensity,
           directional: lightingIntensity * 1.2
         });
@@ -348,7 +348,7 @@ export class B3B4Bridge {
       // Ajustement performance B3 basé sur B4
       if (syncData.renderTime > 20) { // > 20ms = problème performance
         this.sendToB3({
-          type: 'LIGHTING.ENABLE_BASE', // Réduire à base seulement
+          type: 'ENABLE_BASE_LIGHTING', // Réduire à base seulement
         });
       }
 

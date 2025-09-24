@@ -7,7 +7,7 @@ import type { LightingContext, LightingPreset } from '../lighting/types';
 import type {
   EnvironmentContext as B4EnvironmentContext,
   EnvironmentEvent as B4EnvironmentEvent
-} from '../environment/types';
+} from '../environment/environmentTypes';
 
 // ============================================
 // TYPES PARTAGÉS
@@ -98,10 +98,43 @@ export interface SecurityConfig {
   pbrPreset?: Partial<PBRGlobalConfig>;
 }
 
+// 🔐 B5 Security Context - Architecture Actor Model complète
 export interface SecurityContext {
+  // Legacy visual presets (compatibility)
   currentPreset: SecurityPreset | null;
   isTransitioning: boolean;
   presets: Record<SecurityPreset, SecurityConfig>;
+
+  // ✅ NOUVEAU: B5 Security Actor Model
+  securityMachine: {
+    isActive: boolean;
+    securityLevel: 'normal' | 'scanning' | 'alert' | 'lockdown';
+    threatScore: number;
+    currentThreats: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      timestamp: number;
+    }>;
+
+    // Bridge connections
+    bridgeConnections: {
+      b3Lighting: boolean;
+      b4Environment: boolean;
+      visualEffects: boolean;
+    };
+
+    // Performance monitoring
+    circuitBreakerState: 'closed' | 'open' | 'half-open';
+    performanceMode: 'normal' | 'reduced' | 'minimal';
+
+    // Visual alerts
+    activeAlerts: Array<{
+      pattern: 'flash' | 'pulse' | 'rotate' | 'distortion' | 'glitch' | 'scanner';
+      color: string;
+      intensity: number;
+    }>;
+  };
 }
 
 // ============================================
@@ -159,11 +192,27 @@ export type PBREvent =
 // 🌍 Événements Environment (B4 - importés depuis environment/types)
 // Les événements Environment utilisent maintenant la définition B4 complète
 
-// 🔒 Événements Security
+// 🔒 Événements Security - B5 Architecture complète
 export type SecurityEvent =
+  // Legacy compatibility events
   | { type: 'SECURITY.SET_PRESET'; preset: SecurityPreset }
   | { type: 'SECURITY.TRANSITION_START' }
-  | { type: 'SECURITY.TRANSITION_COMPLETE' };
+  | { type: 'SECURITY.TRANSITION_COMPLETE' }
+
+  // ✅ NOUVEAU: B5 Security Actor Model events
+  | { type: 'B5_SECURITY.ACTIVATE' }
+  | { type: 'B5_SECURITY.DEACTIVATE' }
+  | { type: 'B5_SECURITY.SET_LEVEL'; level: 'normal' | 'scanning' | 'alert' | 'lockdown' }
+  | { type: 'B5_SECURITY.ESCALATE' }
+  | { type: 'B5_SECURITY.DEESCALATE' }
+  | { type: 'B5_SECURITY.THREAT_DETECTED'; threat: { score: number; threats: any[] } }
+  | { type: 'B5_SECURITY.THREAT_CLEARED'; threatId: string }
+  | { type: 'B5_SECURITY.TRIGGER_ALERT'; pattern: 'flash' | 'pulse' | 'rotate' | 'distortion' | 'glitch' | 'scanner'; config?: any }
+  | { type: 'B5_SECURITY.STOP_ALERTS' }
+  | { type: 'B5_SECURITY.PERFORMANCE_DEGRADED'; metrics: any }
+  | { type: 'B5_SECURITY.PERFORMANCE_RECOVERED' }
+  | { type: 'B5_SECURITY.BRIDGE_CONNECT'; system: 'b3-lighting' | 'b4-environment' | 'visual-effects' }
+  | { type: 'B5_SECURITY.BRIDGE_DISCONNECT'; system: 'b3-lighting' | 'b4-environment' | 'visual-effects' };
 
 // 🔦 Événements Lighting (B3)
 export type LightingEvent =
@@ -193,6 +242,12 @@ export type SystemEvent =
   | { type: 'SYSTEM.DISPOSE' }
   | { type: 'SYSTEM.ERROR'; error: Error };
 
+// Legacy Environment Events (compatibilité)
+export type LegacyEnvironmentEvent =
+  | { type: 'ENV.LOAD_HDR'; path: string; config?: any }
+  | { type: 'ENV.UNLOAD_HDR' }
+  | { type: 'ENV.SET_INTENSITY'; intensity: number };
+
 // Type union de tous les événements
 export type VisualEffectsEvent =
   | BloomEvent
@@ -201,7 +256,8 @@ export type VisualEffectsEvent =
   | SecurityEvent
   | LightingEvent
   | ObjectEvent
-  | SystemEvent;
+  | SystemEvent
+  | LegacyEnvironmentEvent;
 
 // ============================================
 // ÉTATS MACHINE
